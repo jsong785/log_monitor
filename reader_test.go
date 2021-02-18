@@ -16,115 +16,223 @@ func TestReadLineReverse_Empty(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestReadLineReverse_EmptyLine(t *testing.T) {
-	reader := strings.NewReader("\n")
-	reader.Seek(0, io.SeekEnd)
-
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, 0, len(line))
-	assert.Nil(t, err)
-}
-
-func TestReadLineReverse_EmptyLine_2(t *testing.T) {
+func TestReadLineReverse_EmptyLines(t *testing.T) {
 	reader := strings.NewReader("\n\n")
-	reader.Seek(0, io.SeekEnd)
+        
+        _, err := reader.Seek(0, io.SeekEnd)
+        assert.Nil(t, err)
 
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, 0, len(line))
-	assert.Nil(t, err)
+        // read first line
+        func() {
+            line, err := ReadLineReverse(reader)
+            assert.Equal(t, "\n", line)
+            assert.Nil(t, err)
+            
+            pos, err := reader.Seek(0, io.SeekCurrent)
+            assert.Equal(t, int64(1), pos)
+            assert.Nil(t, err)
+        }()
+        // read second line
+        func() {
+            line, err := ReadLineReverse(reader)
+            assert.Equal(t, "\n", line)
+            assert.Nil(t, err)
+            
+            pos, err := reader.Seek(0, io.SeekCurrent)
+            assert.Equal(t, int64(0), pos)
+            assert.Nil(t, err)
+        }()
+        // read non-existent third line
+        func() {
+            line, err := ReadLineReverse(reader)
+            assert.Equal(t, 0, len(line))
+            assert.NotNil(t, err)
+        }()
 }
 
-func TestReadLineReverse_EmptyLine_3(t *testing.T) {
-	reader := strings.NewReader("123\n")
-	reader.Seek(0, io.SeekEnd)
+func TestReadLineReverse_NonEmptyLines(t *testing.T) {
+	reader := strings.NewReader("abc\ndef\n")
+        
+        _, err := reader.Seek(0, io.SeekEnd)
+        assert.Nil(t, err)
 
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, 0, len(line))
-	assert.Nil(t, err)
+        // read first line
+        func() {
+            line, err := ReadLineReverse(reader)
+            assert.Equal(t, "def\n", line)
+            assert.Nil(t, err)
+            
+            pos, err := reader.Seek(0, io.SeekCurrent)
+            assert.Equal(t, int64(4), pos)
+            assert.Nil(t, err)
+        }()
+        // read second line
+        func() {
+            line, err := ReadLineReverse(reader)
+            assert.Equal(t, "abc\n", line)
+            assert.Nil(t, err)
+            
+            pos, err := reader.Seek(0, io.SeekCurrent)
+            assert.Equal(t, int64(0), pos)
+            assert.Nil(t, err)
+        }()
+        // read non-existent third line
+        func() {
+            line, err := ReadLineReverse(reader)
+            assert.Equal(t, 0, len(line))
+            assert.NotNil(t, err)
+        }()
 }
 
-func TestReadLineReverse_EmptyLine_4(t *testing.T) {
-	reader := strings.NewReader("abc\n")
-	reader.Seek(0, io.SeekEnd)
+func TestReadLinesInReverse_Stop(t *testing.T) {
+    reader := strings.NewReader("abc\ndef\n")
 
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, 0, len(line))
-	assert.Nil(t, err)
-}
+    // read all lines
+    reader.Seek(0, io.SeekEnd)
+    func() {
+        lines, err := ReadLinesInReverse(reader, 
+            func(string) bool {
+                return true
+            }, 
+            func (lines []string) bool {
+                return len(lines) < 2
+            })
+        assert.Equal(t, []string{"def\n", "abc\n"}, lines)
+        assert.Nil(t, err)
+    }()
 
-func TestReadLineReverse_Valid_incomplete_line(t *testing.T) {
-	reader := strings.NewReader("abc")
-	reader.Seek(0, io.SeekEnd)
+    // read one line
+    reader.Seek(0, io.SeekEnd)
+    func() {
+        lines, err := ReadLinesInReverse(reader, 
+            func(string) bool {
+                return true
+            }, 
+            func (lines []string) bool {
+                return len(lines) < 1
+            })
+        assert.Equal(t, []string{"def\n"}, lines)
+        assert.Nil(t, err)
+    }()
 
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, line, "abc")
-	assert.Nil(t, err)
-}
+    // skip every other
+    reader.Reset("abc\ndef\nghi\njkl\n")
+    reader.Seek(0, io.SeekEnd)
+    func() {
+        count := 0
+        valid := true
+        lines, err := ReadLinesInReverse(reader, 
+            func(string) bool {
+                v := valid
+                valid = !valid
+                return v
+            }, 
+            func ([]string) bool {
+                count++
+                return count < 4
+            })
+        assert.Equal(t, []string{"jkl\n", "def\n"}, lines)
+        assert.Nil(t, err)
+    }()
 
-func TestReadLineReverse_Valid(t *testing.T) {
-	reader := strings.NewReader("\nabc")
-	reader.Seek(0, io.SeekEnd)
+    // if it starts with an 'a', include it
+    reader.Reset("apple\ncar\ndefer\nairplane\nzebra\natom\n")
+    reader.Seek(0, io.SeekEnd)
+    func() {
+        lines, err := ReadLinesInReverse(reader, 
+            func(val string) bool {
+                return len(val) > 0 && val[0] == 'a'
+            }, 
+            func ([]string) bool {
+                pos, err := reader.Seek(0, io.SeekCurrent)
+                return err == nil && pos > 0
+            })
+        assert.Equal(t, []string{"atom\n", "airplane\n", "apple\n"}, lines)
+        assert.Nil(t, err)
+    }()
 
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, line, "abc")
-	assert.Nil(t, err)
-}
-
-func TestReadLineReverse_Valid_multiple(t *testing.T) {
-	reader := strings.NewReader("abc\ndef\nghi")
-	reader.Seek(0, io.SeekEnd)
-
-	line, err := ReadLineReverse(reader)
-	assert.Equal(t, "ghi", line)
-	assert.Nil(t, err)
-
-	line, err = ReadLineReverse(reader)
-	assert.Equal(t, "def", line)
-	assert.Nil(t, err)
-
-	line, err = ReadLineReverse(reader)
-	assert.Equal(t, "abc", line)
-	assert.Nil(t, err)
+    // if it never stops, it will error
+    reader.Seek(0, io.SeekEnd)
+    func() {
+        lines, err := ReadLinesInReverse(reader, 
+            func(string) bool {
+                return true
+            }, 
+            func ([]string) bool {
+                return true;
+            })
+        assert.Equal(t, 0, len(lines))
+        assert.NotNil(t, err)
+    }()
 }
 
 func TestReadLastNLines_Empty(t *testing.T) {
 	reader := strings.NewReader("")
-	line, err := ReadLastNLines(reader, 0)
-	assert.Equal(t, 0, len(line))
-	assert.Nil(t, err)
+
+        func() {
+            lines, err := ReadLastNLines(reader, 0)
+            assert.Equal(t, 0, len(lines))
+            assert.Nil(t, err)
+        }()
+
+        func() {
+            lines, err := ReadLastNLines(reader, 2)
+            assert.Equal(t, 0, len(lines))
+            assert.NotNil(t, err)
+        }()
 }
 
-func TestReadLastNLines_Empty_2(t *testing.T) {
-	reader := strings.NewReader("abcd")
-	line, err := ReadLastNLines(reader, 0)
-	assert.Equal(t, 0, len(line))
-	assert.Nil(t, err)
+func TestReadLastNLines_NotEmpty(t *testing.T) {
+	reader := strings.NewReader("abc\ndef\nghi\njkl\n")
+
+        func() {
+            lines, err := ReadLastNLines(reader, 0)
+            assert.Equal(t, 0, len(lines))
+            assert.Nil(t, err)
+        }()
+
+        func() {
+            lines, err := ReadLastNLines(reader, 1)
+            assert.Equal(t, []string{ "jkl\n" }, lines)
+            assert.Nil(t, err)
+        }()
+
+        func() {
+            lines, err := ReadLastNLines(reader, 2)
+            assert.Equal(t, []string{ "jkl\n", "ghi\n" }, lines)
+            assert.Nil(t, err)
+        }()
 }
 
-func TestReadLastNLines_valid(t *testing.T) {
-	reader := strings.NewReader("abc")
-	line, err := ReadLastNLines(reader, 1)
-	assert.Equal(t, []string{"abc"}, line)
-	assert.Nil(t, err)
+func TestReadLastLinesContainsString_Empty(t *testing.T) {
+	reader := strings.NewReader("")
+
+        func() {
+            lines, err := ReadLastLinesContainsString(reader, "")
+            assert.Equal(t, 0, len(lines))
+            assert.NotNil(t, err)
+        }()
+
+        func() {
+            lines, err := ReadLastLinesContainsString(reader, "abc")
+            assert.Equal(t, 0, len(lines))
+            assert.NotNil(t, err)
+        }()
 }
 
-func TestReadLastNLines_valid_2(t *testing.T) {
-	reader := strings.NewReader("abc\ndef\nghi")
-	line, err := ReadLastNLines(reader, 3)
-	assert.Equal(t, []string{"ghi", "def", "abc"}, line)
-	assert.Nil(t, err)
-}
+func TestReadLastLinesContainsString_NotEmpty(t *testing.T) {
+	reader := strings.NewReader("one\ntwo\nthree\nfour\n")
 
-func TestReadLastNLines_valid_3(t *testing.T) {
-	reader := strings.NewReader("abc\ndef\nghi")
-	line, err := ReadLastNLines(reader, 2)
-	assert.Equal(t, []string{"ghi", "def"}, line)
-	assert.Nil(t, err)
-}
+        func() {
+            lines, err := ReadLastLinesContainsString(reader, "")
+            assert.Equal(t, []string{ "four\n", "three\n", "two\n", "one\n"}, lines)
+            assert.Nil(t, err)
+        }()
 
-func TestReadLastNLines_too_many(t *testing.T) {
-	reader := strings.NewReader("abc\ndef\nghi")
-	line, err := ReadLastNLines(reader, 4)
-	assert.Equal(t, 0, len(line))
-	assert.NotNil(t, err)
+        func() {
+            lines, err := ReadLastLinesContainsString(reader, "o")
+            assert.Equal(t, []string{ "four\n", "two\n", "one\n"}, lines)
+            assert.Nil(t, err)
+        }()
+
 }
