@@ -1,6 +1,7 @@
 package log_monitor
 
 import (
+        "errors"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
@@ -94,8 +95,8 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
             func(string) bool {
                 return true
             }, 
-            func (lines []string) bool {
-                return len(lines) < 2
+            func (lines []string) (bool, error) {
+                return len(lines) < 2, nil
             })
         assert.Equal(t, []string{"def\n", "abc\n"}, lines)
         assert.Nil(t, err)
@@ -108,8 +109,8 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
             func(string) bool {
                 return true
             }, 
-            func (lines []string) bool {
-                return len(lines) < 1
+            func (lines []string) (bool, error) {
+                return len(lines) < 1, nil
             })
         assert.Equal(t, []string{"def\n"}, lines)
         assert.Nil(t, err)
@@ -127,9 +128,9 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
                 valid = !valid
                 return v
             }, 
-            func ([]string) bool {
+            func ([]string) (bool, error) {
                 count++
-                return count < 4
+                return count < 4, nil
             })
         assert.Equal(t, []string{"jkl\n", "def\n"}, lines)
         assert.Nil(t, err)
@@ -143,9 +144,9 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
             func(val string) bool {
                 return len(val) > 0 && val[0] == 'a'
             }, 
-            func ([]string) bool {
+            func ([]string) (bool, error) {
                 pos, err := reader.Seek(0, io.SeekCurrent)
-                return err == nil && pos > 0
+                return pos > 0, err
             })
         assert.Equal(t, []string{"atom\n", "airplane\n", "apple\n"}, lines)
         assert.Nil(t, err)
@@ -158,11 +159,32 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
             func(string) bool {
                 return true
             }, 
-            func ([]string) bool {
-                return true;
+            func ([]string) (bool, error) {
+                return true, nil
             })
         assert.Equal(t, 0, len(lines))
         assert.NotNil(t, err)
+    }()
+
+    // if it errors, just return blank, even if the return is true
+    reader.Seek(0, io.SeekEnd)
+    func() {
+        count := 0
+        lines, err := ReadLinesInReverse(reader, 
+            func(string) bool {
+                return true
+            }, 
+            func ([]string) (bool, error) {
+                count++
+                if count < 2 {
+                    return true, nil
+                } else {
+                    return true, errors.New("some_error_in_a_test")
+                }
+            })
+        assert.Equal(t, 0, len(lines))
+        assert.NotNil(t, err)
+        assert.Equal(t, "some_error_in_a_test", err.Error())
     }()
 }
 

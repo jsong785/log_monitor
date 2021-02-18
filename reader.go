@@ -42,7 +42,7 @@ func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 	return builder.String(), nil
 }
 
-func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func([]string)bool) ([]string, error) {
+func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func([]string)(bool, error)) ([]string, error) {
     var lines []string
     for {
         line, err := ReadLineReverse(buffer)
@@ -52,18 +52,17 @@ func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepRea
             lines = append(lines, line)
         }
 
-        if !keepReading(lines) {
+        ok, err := keepReading(lines)
+        if err != nil {
+            return nil, err
+        } else if !ok {
             break;
         }
     }
     return lines, nil
 }
 
-func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
-    _, err := buffer.Seek(0, io.SeekEnd)
-    if err != nil {
-            return nil, err
-    }
+func ReadLastNLinesHelper(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
     if numLines == 0 {
         return nil, nil
     }
@@ -73,9 +72,17 @@ func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
         func(string) bool { 
             return true 
         },
-        func(lines []string) bool {
-            return uint64(len(lines)) < numLines
+        func(lines []string) (bool, error) {
+            return uint64(len(lines)) < numLines, nil
         })
+}
+
+func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
+    _, err := buffer.Seek(0, io.SeekEnd)
+    if err != nil {
+            return nil, err
+    }
+    return ReadLastNLinesHelper(buffer, numLines)
 }
 
 func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) ([]string, error) {
@@ -88,9 +95,9 @@ func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) ([]string, e
         func(line string) bool { 
             return strings.Contains(line, expr)
         },
-        func(lines []string) bool {
+        func(lines []string) (bool, error) {
             pos, err := buffer.Seek(0, io.SeekCurrent)
-            return err == nil && pos > 0
+            return pos > 0, err
         })
 }
 
