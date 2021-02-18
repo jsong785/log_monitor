@@ -6,7 +6,7 @@ import (
 )
 
 func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
-        newlineFound := false
+	newlineFound := false
 
 	var reverseBuffer []byte
 	for {
@@ -21,11 +21,11 @@ func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 		}
 
 		if charBuffer[0] == '\n' {
-                    if newlineFound {
-			break
-                    } else {
-                        newlineFound = true
-                    }
+			if newlineFound {
+				break
+			} else {
+				newlineFound = true
+			}
 		}
 		buffer.Seek(-1, io.SeekCurrent)
 
@@ -42,62 +42,61 @@ func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 	return builder.String(), nil
 }
 
-func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func([]string)(bool, error)) ([]string, error) {
-    var lines []string
-    for {
-        line, err := ReadLineReverse(buffer)
-        if err != nil {
-            return nil, err
-        } else if isValid(line) {
-            lines = append(lines, line)
-        }
+func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func([]string) (bool, error)) ([]string, error) {
+	var lines []string
+	for {
+		line, err := ReadLineReverse(buffer)
+		if err != nil {
+			return nil, err
+		} else if isValid(line) {
+			lines = append(lines, line)
+		}
 
-        ok, err := keepReading(lines)
-        if err != nil {
-            return nil, err
-        } else if !ok {
-            break;
-        }
-    }
-    return lines, nil
+		ok, err := keepReading(lines)
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+	}
+	return lines, nil
 }
 
 func ReadLastNLinesHelper(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
-    if numLines == 0 {
-        return nil, nil
-    }
+	if numLines == 0 {
+		return nil, nil
+	}
 
-    return ReadLinesInReverse(
-        buffer,
-        func(string) bool { 
-            return true 
-        },
-        func(lines []string) (bool, error) {
-            return uint64(len(lines)) < numLines, nil
-        })
+	return ReadLinesInReverse(
+		buffer,
+		func(string) bool {
+			return true
+		},
+		func(lines []string) (bool, error) {
+			return uint64(len(lines)) < numLines, nil
+		})
 }
 
 func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
-    _, err := buffer.Seek(0, io.SeekEnd)
-    if err != nil {
-            return nil, err
-    }
-    return ReadLastNLinesHelper(buffer, numLines)
+	_, err := buffer.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+	return ReadLastNLinesHelper(buffer, numLines)
 }
 
 func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) ([]string, error) {
-    _, err := buffer.Seek(0, io.SeekEnd)
-    if err != nil {
-            return nil, err
-    }
-    return ReadLinesInReverse(
-        buffer,
-        func(line string) bool { 
-            return strings.Contains(line, expr)
-        },
-        func(lines []string) (bool, error) {
-            pos, err := buffer.Seek(0, io.SeekCurrent)
-            return pos > 0, err
-        })
+	_, err := buffer.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+	return ReadLinesInReverse(
+		buffer,
+		func(line string) bool {
+			return strings.Contains(line, expr)
+		},
+		func(lines []string) (bool, error) {
+			pos, err := buffer.Seek(0, io.SeekCurrent)
+			return pos > 0, err
+		})
 }
-
