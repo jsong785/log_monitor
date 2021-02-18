@@ -185,3 +185,32 @@ func TestTruncateWhileReadingEdgeCase(t *testing.T) {
 		assert.Less(t, 0, len(lines))
 	}()
 }
+
+func TestTruncateWhileReadingEdgeCase2(t *testing.T) {
+	filename := "test_truncate"
+	assert.False(t, DoesFileExist(filename))
+	defer os.Remove(filename)
+	CreateAndWriteFile(filename, "abc\ndef\nghi\njkl\n")
+	assert.True(t, DoesFileExist(filename))
+
+	file, err := os.Open(filename)
+	assert.Nil(t, err)
+
+	func() {
+		lines, err := ReadLastNLines(file, 2)
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"jkl\n", "ghi\n"}, lines)
+	}()
+
+	// truncate the file
+	func() {
+		writer, err := os.Create(filename)
+		assert.Nil(t, err)
+		writer.WriteString("aaa\nbbb\n")
+		writer.Close()
+
+		lines, err := ReadLastNLinesHelper(file, 2)
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"bbb\n", "aaa\n"}, lines)
+	}()
+}
