@@ -1,5 +1,12 @@
 Observability of log files
 
+#TODO
+## allow chaining of filter + lines
+## implement service timeout
+## implement faster reads
+## implement better truncation guards
+## cleanup
+
 # Read a line in reverse (perhaps optimize)
 # Read N lines in reverse (perhaps optimize)
 
