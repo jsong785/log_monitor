@@ -91,12 +91,14 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 	// read all lines
 	reader.Seek(0, io.SeekEnd)
 	func() {
+                count := 0
 		lines, err := ReadLinesInReverse(reader,
 			func(string) bool {
+                                count++
 				return true
 			},
-			func(lines []string) (bool, error) {
-				return len(lines) < 2, nil
+			func() (bool, error) {
+                                return count < 2 , nil
 			})
 		assert.Equal(t, []string{"def\n", "abc\n"}, lines)
 		assert.Nil(t, err)
@@ -105,12 +107,14 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 	// read one line
 	reader.Seek(0, io.SeekEnd)
 	func() {
+                count := 0
 		lines, err := ReadLinesInReverse(reader,
 			func(string) bool {
+                                count++
 				return true
 			},
-			func(lines []string) (bool, error) {
-				return len(lines) < 1, nil
+			func() (bool, error) {
+                                return count < 1, nil
 			})
 		assert.Equal(t, []string{"def\n"}, lines)
 		assert.Nil(t, err)
@@ -128,7 +132,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 				valid = !valid
 				return v
 			},
-			func([]string) (bool, error) {
+			func() (bool, error) {
 				count++
 				return count < 4, nil
 			})
@@ -144,7 +148,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 			func(val string) bool {
 				return len(val) > 0 && val[0] == 'a'
 			},
-			func([]string) (bool, error) {
+			func() (bool, error) {
 				pos, err := reader.Seek(0, io.SeekCurrent)
 				return pos > 0, err
 			})
@@ -159,7 +163,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 			func(string) bool {
 				return true
 			},
-			func([]string) (bool, error) {
+			func() (bool, error) {
 				return true, nil
 			})
 		assert.Equal(t, 0, len(lines))
@@ -174,7 +178,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 			func(string) bool {
 				return true
 			},
-			func([]string) (bool, error) {
+			func() (bool, error) {
 				count++
 				if count < 2 {
 					return true, nil
