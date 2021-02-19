@@ -1,7 +1,7 @@
 Observability of log files
 
 #TODO
-## allow chaining of filter + lines
+## implement main http rest (watch a dir, and timeout and other params)
 ## implement service timeout
 ## implement faster reads
 ## implement better truncation guards

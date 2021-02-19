@@ -57,7 +57,7 @@ func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 	return string(ReverseSlice(reverseBuffer)), nil
 }
 
-func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) ([]string, error) {
+func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) (io.ReadSeeker, error) {
         var results bytes.Buffer
 	for {
 		line, err := ReadLineReverse(buffer)
@@ -74,14 +74,12 @@ func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepRea
 			break
 		}
 	}
-        r := strings.SplitAfter(results.String(), "\n")
-        return r[:len(r)-1], nil
-	//return lines, nil
+        return bytes.NewReader(results.Bytes()), nil
 }
 
-func ReadLastNLinesHelper(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
+func ReadLastNLinesHelper(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
 	if numLines == 0 {
-		return nil, nil
+                return nil, nil
 	}
 
         count := uint64(0)
@@ -96,7 +94,7 @@ func ReadLastNLinesHelper(buffer io.ReadSeeker, numLines uint64) ([]string, erro
 		})
 }
 
-func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
+func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
 	_, err := buffer.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, err
@@ -104,11 +102,7 @@ func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) ([]string, error) {
 	return ReadLastNLinesHelper(buffer, numLines)
 }
 
-func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) ([]string, error) {
-	_, err := buffer.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, err
-	}
+func ReadLastLinesContainsStringHelper(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
 	return ReadLinesInReverse(
 		buffer,
 		func(line string) bool {
@@ -118,4 +112,12 @@ func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) ([]string, e
 			pos, err := buffer.Seek(0, io.SeekCurrent)
 			return pos > 0, err
 		})
+}
+
+func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
+	_, err := buffer.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+ return ReadLastLinesContainsStringHelper(buffer, expr)
 }

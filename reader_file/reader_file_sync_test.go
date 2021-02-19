@@ -1,16 +1,36 @@
 package reader_file
 
 import (
+        "bytes"
 	"errors"
 	"github.com/stretchr/testify/assert"
+        "io"
 	"log_monitor/monitor/reader"
 	"os"
+        "strings"
 	"testing"
 )
 
 func DoesFileExist(filename string) bool {
 	_, err := os.Stat(filename)
 	return !errors.Is(err, os.ErrNotExist)
+}
+
+func SplitReader(reader io.ReadSeeker) []string {
+    var buffer bytes.Buffer
+    buffer.ReadFrom(reader)
+    list := strings.SplitAfter(buffer.String(), "\n")
+    if len(list) > 0 {
+        list = list[:len(list)-1]
+    }
+    return list
+}
+
+func ReaderLen(reader io.ReadSeeker) int {
+    cache, _ := reader.Seek(0, io.SeekCurrent)
+    sz, _ := reader.Seek(0, io.SeekEnd)
+    reader.Seek(cache, io.SeekStart)
+    return int(sz)
 }
 
 func CreateAndWriteFile(filename string, contents string) error {
@@ -44,7 +64,7 @@ func TestDeleteWhileReading(t *testing.T) {
 	func() {
 		lines, err := reader.ReadLastNLines(file, 1)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"jkl\n"}, lines)
+		assert.Equal(t, []string{"jkl\n"}, SplitReader(lines))
 	}()
 
 	// remove the file, it doesn't exist, but fd keeps it alive
@@ -54,7 +74,7 @@ func TestDeleteWhileReading(t *testing.T) {
 
 		lines, err := reader.ReadLastNLinesHelper(file, 2)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"ghi\n", "def\n"}, lines)
+		assert.Equal(t, []string{"ghi\n", "def\n"}, SplitReader(lines))
 	}()
 	// it really doesn't exist
 	assert.False(t, DoesFileExist(filename))
@@ -73,7 +93,7 @@ func TestMoveWhileReading(t *testing.T) {
 	func() {
 		lines, err := reader.ReadLastNLines(file, 1)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"five\n"}, lines)
+		assert.Equal(t, []string{"five\n"}, SplitReader(lines))
 	}()
 
 	// move the file, fd follows
@@ -89,7 +109,7 @@ func TestMoveWhileReading(t *testing.T) {
 
 		lines, err := reader.ReadLastNLinesHelper(file, 2)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"four\n", "three\n"}, lines)
+		assert.Equal(t, []string{"four\n", "three\n"}, SplitReader(lines))
 	}()
 	// it really doesn't exist
 	assert.False(t, DoesFileExist(filename))
@@ -112,7 +132,7 @@ func TestWriteWhileReading(t *testing.T) {
 	func() {
 		lines, err := reader.ReadLastNLines(file, 1)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"five\n"}, lines)
+		assert.Equal(t, []string{"five\n"}, SplitReader(lines))
 	}()
 
 	// write
@@ -122,13 +142,13 @@ func TestWriteWhileReading(t *testing.T) {
 
 		lines, err := reader.ReadLastNLinesHelper(file, 2)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"four\n", "three\n"}, lines)
+		assert.Equal(t, []string{"four\n", "three\n"}, SplitReader(lines))
 	}()
 
 	func() {
 		lines, err := reader.ReadLastNLines(file, 9)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"ten\n", "nine\n", "eight\n", "seven\n", "six\n", "five\n", "four\n", "three\n", "two\n"}, lines)
+		assert.Equal(t, []string{"ten\n", "nine\n", "eight\n", "seven\n", "six\n", "five\n", "four\n", "three\n", "two\n"}, SplitReader(lines))
 	}()
 }
 
@@ -145,7 +165,7 @@ func TestTruncateWhileReading(t *testing.T) {
 	func() {
 		lines, err := reader.ReadLastNLines(file, 1)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"jkl\n"}, lines)
+		assert.Equal(t, []string{"jkl\n"}, SplitReader(lines))
 	}()
 
 	// truncate the file
@@ -153,8 +173,8 @@ func TestTruncateWhileReading(t *testing.T) {
 		assert.Nil(t, os.Truncate(filename, 0))
 
 		lines, err := reader.ReadLastNLinesHelper(file, 2)
+                assert.Nil(t, lines)
 		assert.NotNil(t, err)
-		assert.Equal(t, 0, len(lines))
 	}()
 }
 
@@ -171,7 +191,7 @@ func TestTruncateWhileReadingEdgeCase(t *testing.T) {
 	func() {
 		lines, err := reader.ReadLastNLines(file, 1)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"jkl\n"}, lines)
+		assert.Equal(t, []string{"jkl\n"}, SplitReader(lines))
 	}()
 
 	// truncate the file
@@ -183,7 +203,8 @@ func TestTruncateWhileReadingEdgeCase(t *testing.T) {
 
 		lines, err := reader.ReadLastNLinesHelper(file, 2)
 		assert.Nil(t, err)
-		assert.Less(t, 0, len(lines))
+		assert.Less(t, 0, ReaderLen(lines))
+                _ = lines
 	}()
 }
 
@@ -200,7 +221,7 @@ func TestTruncateWhileReadingEdgeCase2(t *testing.T) {
 	func() {
 		lines, err := reader.ReadLastNLines(file, 2)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"jkl\n", "ghi\n"}, lines)
+		assert.Equal(t, []string{"jkl\n", "ghi\n"}, SplitReader(lines))
 	}()
 
 	// truncate the file
@@ -212,6 +233,6 @@ func TestTruncateWhileReadingEdgeCase2(t *testing.T) {
 
 		lines, err := reader.ReadLastNLinesHelper(file, 2)
 		assert.Nil(t, err)
-		assert.Equal(t, []string{"bbb\n", "aaa\n"}, lines)
+		assert.Equal(t, []string{"bbb\n", "aaa\n"}, SplitReader(lines))
 	}()
 }
