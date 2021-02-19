@@ -5,6 +5,24 @@ import (
 	"strings"
 )
 
+func ReverseSlice(slice[] byte) []byte {
+    if len(slice) == 0 {
+        return slice
+    }
+    start := 0
+    end := len(slice) - 1
+    for start < end {
+        a := slice[start]
+        b := slice[end]
+
+        slice[start] = b
+        slice[end] = a
+        start++
+        end--
+    }
+    return slice
+}
+
 func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 	newlineFound := false
 
@@ -35,11 +53,7 @@ func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 		}
 	}
 
-	var builder strings.Builder
-	for i := len(reverseBuffer) - 1; i >= 0; i-- {
-		builder.WriteByte(reverseBuffer[i])
-	}
-	return builder.String(), nil
+        return string(ReverseSlice(reverseBuffer)), nil
 }
 
 func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func([]string) (bool, error)) ([]string, error) {
