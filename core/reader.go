@@ -1,30 +1,42 @@
 package core
 
 import (
-        "bytes"
+	"bytes"
 	"io"
+	"log_monitor/monitor/core_utils"
 	"strings"
 )
 
-func ReverseSlice(slice []byte) []byte {
-	if len(slice) == 0 {
-		return slice
+func ReadReverseNLines(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
+	if numLines == 0 {
+		return nil, nil
 	}
-	start := 0
-	end := len(slice) - 1
-	for start < end {
-		a := slice[start]
-		b := slice[end]
 
-		slice[start] = b
-		slice[end] = a
-		start++
-		end--
-	}
-	return slice
+	count := uint64(0)
+	return readReverse(
+		buffer,
+		func(string) bool {
+			count++
+			return true
+		},
+		func() (bool, error) {
+			return count < numLines, nil
+		})
 }
 
-func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
+func ReadReversePassesFilter(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
+	return readReverse(
+		buffer,
+		func(line string) bool {
+			return strings.Contains(line, expr)
+		},
+		func() (bool, error) {
+			pos, err := buffer.Seek(0, io.SeekCurrent)
+			return pos > 0, err
+		})
+}
+
+func readLineReverse(buffer io.ReadSeeker) (string, error) {
 	newlineFound := false
 
 	var reverseBuffer []byte
@@ -54,17 +66,17 @@ func ReadLineReverse(buffer io.ReadSeeker) (string, error) {
 		}
 	}
 
-	return string(ReverseSlice(reverseBuffer)), nil
+	return string(core_utils.ReverseBytes(reverseBuffer)), nil
 }
 
-func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) (io.ReadSeeker, error) {
-        var results bytes.Buffer
+func readReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) (io.ReadSeeker, error) {
+	var results bytes.Buffer
 	for {
-		line, err := ReadLineReverse(buffer)
+		line, err := readLineReverse(buffer)
 		if err != nil {
 			return nil, err
 		} else if isValid(line) {
-                        results.WriteString(line)
+			results.WriteString(line)
 		}
 
 		ok, err := keepReading()
@@ -74,50 +86,5 @@ func ReadLinesInReverse(buffer io.ReadSeeker, isValid func(string) bool, keepRea
 			break
 		}
 	}
-        return bytes.NewReader(results.Bytes()), nil
-}
-
-func ReadLastNLinesHelper(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
-	if numLines == 0 {
-                return nil, nil
-	}
-
-        count := uint64(0)
-	return ReadLinesInReverse(
-		buffer,
-		func(string) bool {
-                        count++
-			return true
-		},
-		func() (bool, error) {
-                        return count < numLines, nil
-		})
-}
-
-func ReadLastNLines(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
-	_, err := buffer.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, err
-	}
-	return ReadLastNLinesHelper(buffer, numLines)
-}
-
-func ReadLastLinesContainsStringHelper(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
-	return ReadLinesInReverse(
-		buffer,
-		func(line string) bool {
-			return strings.Contains(line, expr)
-		},
-		func() (bool, error) {
-			pos, err := buffer.Seek(0, io.SeekCurrent)
-			return pos > 0, err
-		})
-}
-
-func ReadLastLinesContainsString(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
-	_, err := buffer.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, err
-	}
- return ReadLastLinesContainsStringHelper(buffer, expr)
+	return bytes.NewReader(results.Bytes()), nil
 }

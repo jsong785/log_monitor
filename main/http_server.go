@@ -1,32 +1,42 @@
 package main
 
 import (
+	"flag"
 	"github.com/gorilla/mux"
-        "io"
+	"io"
 	"log"
-	"log_monitor/monitor/core_utils"
 	"log_monitor/monitor/core"
+	"log_monitor/monitor/core_utils"
 	"log_monitor/monitor/file_reader"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"time"
 )
 
 func main() {
-	server := CreateLogServer(":10000",
-		serveNLines("/home/jsong/projects/log_monitor/reader_file/"),
-		serveFilterLines("/home/jsong/projects/log_monitor/reader_file/"),
-		serveLinesThenFilter("/home/jsong/projects/log_monitor/reader_file/"))
+	addr := flag.String("addr", "localhost:8080", "address:port to run server")
+	dir := flag.String("dir", "/var/syslog", "default serving directory")
+	timeout := flag.Uint64("timeout", 2000, "timeout in milliseconds to serve a request")
+	flag.Parse()
+
+	server := CreateLogServer(*addr,
+		*timeout,
+		serveNLines(*dir),
+		serveFilterLines(*dir),
+		serveLinesThenFilter(*dir))
 	log.Fatal(server.ListenAndServe())
 }
 
-func CreateLogServer(addr string, handleNLines http.HandlerFunc, filterLines http.HandlerFunc, linesThenFilter http.HandlerFunc) http.Server {
+func CreateLogServer(addr string, timeout uint64, handleNLines http.HandlerFunc, filterLines http.HandlerFunc, linesThenFilter http.HandlerFunc) http.Server {
 	router := mux.NewRouter()
 	router.HandleFunc("/{file}", linesThenFilter).Queries("lines", "{lines}").Queries("filter", "{filter}")
 	router.HandleFunc("/{file}", handleNLines).Queries("lines", "{lines}")
 	router.HandleFunc("/{file}", filterLines).Queries("filter", "{filter}")
 	return http.Server{
-		Addr:    addr,
-		Handler: router,
+		Addr:         addr,
+		Handler:      router,
+		WriteTimeout: time.Duration(timeout) * time.Millisecond,
 	}
 }
 
@@ -37,12 +47,13 @@ func serveNLines(baseDir string) http.HandlerFunc {
 		nlines := vars["lines"]
 
 		n, _ := strconv.Atoi(nlines)
-		lines, err := file_reader.ReadLastNLinesFromFile(baseDir+file, uint64(n))
+
+		res, err := file_reader.ReadReverseNLines(filepath.Join(baseDir, file), uint64(n))
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
-                io.Copy(w, lines)
+		io.Copy(w, res)
 	}
 }
 
@@ -52,12 +63,12 @@ func serveFilterLines(baseDir string) http.HandlerFunc {
 		file := vars["file"]
 		filter := vars["filter"]
 
-		lines, err := file_reader.ReadLastLinesContainsStringFromFile(baseDir+file, filter)
+		res, err := file_reader.ReadReversePassesFilter(filepath.Join(baseDir, file), filter)
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
-                io.Copy(w, lines)
+		io.Copy(w, res)
 	}
 }
 
@@ -69,15 +80,15 @@ func serveLinesThenFilter(baseDir string) http.HandlerFunc {
 		filter := vars["filter"]
 		n, _ := strconv.Atoi(nlines)
 
-                res, err := file_reader.ReadLastNLinesFromFile(baseDir+file, uint64(n))
-                res, err = core_utils.LogFuncBind(res, err,
-                    func(buffer io.ReadSeeker) (io.ReadSeeker, error) {
-                        return core.ReadLastLinesContainsStringHelper(buffer, filter)
-                    })
+		res, err := file_reader.ReadReverseNLines(filepath.Join(baseDir, file), uint64(n))
+		res, err = core_utils.LogFuncBind(res, err,
+			func(b io.ReadSeeker) (io.ReadSeeker, error) {
+				return core.ReadReversePassesFilter(b, filter)
+			})
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
-                io.Copy(w, res)
+		io.Copy(w, res)
 	}
 }
