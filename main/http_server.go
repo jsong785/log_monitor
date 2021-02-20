@@ -4,8 +4,9 @@ import (
 	"github.com/gorilla/mux"
         "io"
 	"log"
-	"log_monitor/monitor/reader"
-	"log_monitor/monitor/reader_file"
+	"log_monitor/monitor/core_utils"
+	"log_monitor/monitor/core"
+	"log_monitor/monitor/file_reader"
 	"net/http"
 	"strconv"
 )
@@ -36,7 +37,7 @@ func serveNLines(baseDir string) http.HandlerFunc {
 		nlines := vars["lines"]
 
 		n, _ := strconv.Atoi(nlines)
-		lines, err := reader_file.ReadLastNLinesFromFile(baseDir+file, uint64(n))
+		lines, err := file_reader.ReadLastNLinesFromFile(baseDir+file, uint64(n))
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -51,29 +52,13 @@ func serveFilterLines(baseDir string) http.HandlerFunc {
 		file := vars["file"]
 		filter := vars["filter"]
 
-		lines, err := reader_file.ReadLastLinesContainsStringFromFile(baseDir+file, filter)
+		lines, err := file_reader.ReadLastLinesContainsStringFromFile(baseDir+file, filter)
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
                 io.Copy(w, lines)
 	}
-}
-
-type LogFuncMonad func(io.ReadSeeker) (io.ReadSeeker, error)
-func LogFuncBind(buffer io.ReadSeeker, err error, f ...LogFuncMonad) (io.ReadSeeker, error) {
-    if err != nil {
-        return nil, err
-    }
-
-    if _, err := buffer.Seek(0, io.SeekEnd); err != nil {
-        return nil, err
-    }
-    if len(f) == 1 {
-        return f[0](buffer)
-    }
-    res, err := f[0](buffer)
-    return LogFuncBind(res, err, f[1:]...)
 }
 
 func serveLinesThenFilter(baseDir string) http.HandlerFunc {
@@ -84,10 +69,10 @@ func serveLinesThenFilter(baseDir string) http.HandlerFunc {
 		filter := vars["filter"]
 		n, _ := strconv.Atoi(nlines)
 
-                res, err := reader_file.ReadLastNLinesFromFile(baseDir+file, uint64(n))
-                res, err = LogFuncBind(res, err,
+                res, err := file_reader.ReadLastNLinesFromFile(baseDir+file, uint64(n))
+                res, err = core_utils.LogFuncBind(res, err,
                     func(buffer io.ReadSeeker) (io.ReadSeeker, error) {
-                        return reader.ReadLastLinesContainsStringHelper(buffer, filter)
+                        return core.ReadLastLinesContainsStringHelper(buffer, filter)
                     })
 		if err != nil {
 			http.NotFound(w, r)

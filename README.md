@@ -1,11 +1,12 @@
 Observability of log files
 
 #TODO
+## rename core to core_utils
+## implement faster read with new truncation tests and benchmark
+## implement service timout
 ## implement main http rest (watch a dir, and timeout and other params)
-## implement service timeout
-## implement faster reads
-## implement better truncation guards
-## cleanup
+## implement http service tests
+## implement http load tests
 
 # Read a line in reverse (perhaps optimize)
 # Read N lines in reverse (perhaps optimize)

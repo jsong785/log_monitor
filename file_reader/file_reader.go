@@ -1,8 +1,8 @@
-package reader_file
+package file_reader
 
 import (
         "io"
-	"log_monitor/monitor/reader"
+	"log_monitor/monitor/core"
 	"os"
 )
 
@@ -12,7 +12,7 @@ func ReadLastNLinesFromFile(filename string, numLines uint64) (io.ReadSeeker, er
 		return nil, err
 	}
 	defer file.Close()
-	return reader.ReadLastNLines(file, numLines)
+	return core.ReadLastNLines(file, numLines)
 }
 
 func ReadLastLinesContainsStringFromFile(filename string, expr string) (io.ReadSeeker, error) {
@@ -21,5 +21,5 @@ func ReadLastLinesContainsStringFromFile(filename string, expr string) (io.ReadS
 		return nil, err
 	}
 	defer file.Close()
-	return reader.ReadLastLinesContainsString(file, expr)
+	return core.ReadLastLinesContainsString(file, expr)
 }

@@ -1,23 +1,13 @@
-package reader
+package core
 
 import (
-        "bytes"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
 	"testing"
+        "log_monitor/monitor/test_utils"
 )
-
-func SplitReader(reader io.ReadSeeker) []string {
-    var buffer bytes.Buffer
-    buffer.ReadFrom(reader)
-    list := strings.SplitAfter(buffer.String(), "\n")
-    if len(list) > 0 {
-        list = list[:len(list)-1]
-    }
-    return list
-}
 
 func TestReadLineReverse_Empty(t *testing.T) {
 	reader := strings.NewReader("")
@@ -111,7 +101,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 			func() (bool, error) {
                                 return count < 2 , nil
 			})
-		assert.Equal(t, []string{"def\n", "abc\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"def\n", "abc\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
@@ -127,7 +117,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 			func() (bool, error) {
                                 return count < 1, nil
 			})
-		assert.Equal(t, []string{"def\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"def\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
@@ -147,7 +137,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 				count++
 				return count < 4, nil
 			})
-		assert.Equal(t, []string{"jkl\n", "def\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"jkl\n", "def\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
@@ -163,7 +153,7 @@ func TestReadLinesInReverse_Stop(t *testing.T) {
 				pos, err := reader.Seek(0, io.SeekCurrent)
 				return pos > 0, err
 			})
-		assert.Equal(t, []string{"atom\n", "airplane\n", "apple\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"atom\n", "airplane\n", "apple\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
@@ -230,13 +220,13 @@ func TestReadLastNLines_NotEmpty(t *testing.T) {
 
 	func() {
 		lines, err := ReadLastNLines(reader, 1)
-		assert.Equal(t, []string{"jkl\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"jkl\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
 	func() {
 		lines, err := ReadLastNLines(reader, 2)
-		assert.Equal(t, []string{"jkl\n", "ghi\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"jkl\n", "ghi\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 }
@@ -262,13 +252,13 @@ func TestReadLastLinesContainsString_NotEmpty(t *testing.T) {
 
 	func() {
 		lines, err := ReadLastLinesContainsString(reader, "")
-		assert.Equal(t, []string{"four\n", "three\n", "two\n", "one\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"four\n", "three\n", "two\n", "one\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
 	func() {
 		lines, err := ReadLastLinesContainsString(reader, "o")
-		assert.Equal(t, []string{"four\n", "two\n", "one\n"}, SplitReader(lines))
+		assert.Equal(t, []string{"four\n", "two\n", "one\n"}, test_utils.GetLines(lines))
 		assert.Nil(t, err)
 	}()
 
