@@ -14,41 +14,31 @@ import (
 	"time"
 )
 
-func main() {
-	addr := flag.String("addr", "localhost:8080", "address:port to run server")
-	dir := flag.String("dir", "/var/syslog", "default serving directory")
-	timeout := flag.Uint64("timeout", 2000, "timeout in milliseconds to serve a request")
-	flag.Parse()
-
-	server := CreateLogServer(*addr,
-		*timeout,
-		serveNLines(*dir),
-		serveFilterLines(*dir),
-		serveLinesThenFilter(*dir))
-	log.Fatal(server.ListenAndServe())
+func CreateLogServer(dir string, address string, readTimeout uint, writeTimeout uint) http.Server {
+	return http.Server{
+		Addr:         address,
+		Handler:      getRouter(dir),
+		ReadTimeout:  time.Duration(readTimeout) * time.Millisecond,
+		WriteTimeout: time.Duration(writeTimeout) * time.Millisecond,
+	}
 }
 
-func CreateLogServer(addr string, timeout uint64, handleNLines http.HandlerFunc, filterLines http.HandlerFunc, linesThenFilter http.HandlerFunc) http.Server {
+func getRouter(dir string) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/{file}", linesThenFilter).Queries("lines", "{lines}").Queries("filter", "{filter}")
-	router.HandleFunc("/{file}", handleNLines).Queries("lines", "{lines}")
-	router.HandleFunc("/{file}", filterLines).Queries("filter", "{filter}")
-	return http.Server{
-		Addr:         addr,
-		Handler:      router,
-		WriteTimeout: time.Duration(timeout) * time.Millisecond,
-	}
+	router.HandleFunc("/{file}", serveLinesThenFilter(dir)).Queries("lines", "{lines}").Queries("filter", "{filter}").Methods("GET")
+	router.HandleFunc("/{file}", serveNLines(dir)).Queries("lines", "{lines}").Methods("GET")
+	router.HandleFunc("/{file}", serveFilterLines(dir)).Queries("filter", "{filter}").Methods("GET")
+	return router
 }
 
 func serveNLines(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		file := vars["file"]
-		nlines := vars["lines"]
-
-		n, _ := strconv.Atoi(nlines)
-
-		res, err := file_reader.ReadReverseNLines(filepath.Join(baseDir, file), uint64(n))
+		path, n, err := nLinesParse(baseDir, r)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		res, err := file_reader.ReadReverseNLines(path, n)
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -59,11 +49,8 @@ func serveNLines(baseDir string) http.HandlerFunc {
 
 func serveFilterLines(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		file := vars["file"]
-		filter := vars["filter"]
-
-		res, err := file_reader.ReadReversePassesFilter(filepath.Join(baseDir, file), filter)
+		path, filter := filterLinesParse(baseDir, r)
+		res, err := file_reader.ReadReversePassesFilter(path, filter)
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -74,21 +61,42 @@ func serveFilterLines(baseDir string) http.HandlerFunc {
 
 func serveLinesThenFilter(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		file := vars["file"]
-		nlines := vars["lines"]
-		filter := vars["filter"]
-		n, _ := strconv.Atoi(nlines)
+		path, n, err := nLinesParse(baseDir, r)
+		_, filter := filterLinesParse(baseDir, r)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
 
-		res, err := file_reader.ReadReverseNLines(filepath.Join(baseDir, file), uint64(n))
-		res, err = core_utils.LogFuncBind(res, err,
-			func(b io.ReadSeeker) (io.ReadSeeker, error) {
-				return core.ReadReversePassesFilter(b, filter)
-			})
+		res, err := file_reader.ReadReverseNLines(path, n)
+		res, err = core_utils.LogFuncBind(res, err, func(buf io.ReadSeeker) (io.ReadSeeker, error) {
+			return core.ReadReversePassesFilter(buf, filter)
+		})
 		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
 		io.Copy(w, res)
 	}
+}
+
+func nLinesParse(baseDir string, r *http.Request) (string, uint64, error) {
+	vars := mux.Vars(r)
+	nLines, err := strconv.ParseUint(vars["lines"], 10, 64)
+	return filepath.Join(baseDir, vars["file"]), nLines, err
+}
+
+func filterLinesParse(baseDir string, r *http.Request) (string, string) {
+	vars := mux.Vars(r)
+	return filepath.Join(baseDir, vars["file"]), vars["filter"]
+}
+
+func main() {
+	addr := flag.String("addr", "localhost:8080", "address:port to run server")
+	dir := flag.String("dir", "/var/log", "default serving directory")
+	timeout := flag.Uint("timeout", 2000, "timeout in milliseconds to serve a request")
+	flag.Parse()
+
+	server := CreateLogServer(*dir, *addr, 100, *timeout)
+	log.Fatal(server.ListenAndServe())
 }

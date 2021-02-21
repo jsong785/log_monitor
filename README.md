@@ -1,10 +1,7 @@
 Observability of log files
 
 #TODO
-## implement http service tests
-## implement http load tests
-## filetypes binary check?
-## file read mprovements
+## file read improvements
 
 # Read a line in reverse (perhaps optimize)
 # Read N lines in reverse (perhaps optimize)
