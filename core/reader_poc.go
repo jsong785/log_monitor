@@ -1,6 +1,8 @@
 package core
 
 import (
+    "sync"
+    "sync/atomic"
     "bytes"
     "errors"
     "fmt"
@@ -25,7 +27,6 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
     }
     var totalResults bytes.Buffer
 
-    resultsSlice := make([]ParseResult, 0)
     resultsChannel := make(chan ParseResult)
 
     firstLoop := true
@@ -33,6 +34,47 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
     lineCount := uint64(0)
     var lastBlock ParseBlock
     validBlockIndex := uint64(0)
+    atomicbreak := int32(0)
+
+
+    var wg sync.WaitGroup
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        index := 0
+        resultsSlice := make([]ParseResult, 0)
+        for {
+            select {
+            case res := <-resultsChannel:
+                    if res.index ==uint64(index) {
+                        totalResults.ReadFrom(res.result)
+                        index++
+                    } else {
+                        resultsSlice = append(resultsSlice, res)
+                    }
+                default:
+                    for _, sl := range resultsSlice {
+                        if sl.index == uint64(index) {
+                            totalResults.ReadFrom(sl.result)
+                            index++
+                        }
+                    }
+                    break
+            }
+
+            if atomic.LoadInt32(&atomicbreak) > 0 {
+                    res := <-resultsChannel
+                    resultsSlice = append(resultsSlice, res)
+                sort.Sort(ByIndex(resultsSlice))
+                for _, res := range resultsSlice {
+                    _, err := totalResults.ReadFrom(res.result)
+                    _ = err
+                }
+                break
+            }
+        }
+        //fmt.Println("existing")
+    }()
 
     start := time.Now()
     for lineCount < nLines && !forceBreak {
@@ -90,7 +132,11 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
             go func(buf []byte, nLines uint64, index uint64) {
                 reader := bytes.NewReader(buf)
                 reader.Seek(0, io.SeekEnd)
-                res, err := ReadReverseNLines(reader, nLines)
+                //s := time.Now()
+                res, err := ReadReverseNLinesFast(reader, nLines)
+                //dur := time.Since(s)
+                //fmt.Println("individual")
+                //fmt.Println(dur)
                 //fmt.Println("results gotten")
                 //fmt.Println(nLines)
                 resultsChannel <- ParseResult{
@@ -106,36 +152,43 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
             //fmt.Println(string(block.main))
         }
 
+        /*
         select {
         case res:= <- resultsChannel:
             resultsSlice = append(resultsSlice, res)
         default:
             break
         }
+        */
     }
 
+    atomic.AddInt32(&atomicbreak, 1)
+
     dur := time.Since(start)
-    fmt.Println("slowness")
+    fmt.Println("total runtime of loop")
     fmt.Println(dur)
 
     //fmt.Println("slice len")
     //fmt.Println(len(resultsSlice))
-    start = time.Now()
+    //start = time.Now()
+    /*
     for uint64(len(resultsSlice)) < validBlockIndex {
         res := <-resultsChannel
         resultsSlice = append(resultsSlice, res)
     }
-    dur = time.Since(start)
-    fmt.Println("slice time")
-    fmt.Println(dur)
+    */
+    //dur = time.Since(start)
+    //fmt.Println("slice time")
+    //fmt.Println(dur)
 
-    start = time.Now()
-    sort.Sort(ByIndex(resultsSlice))
-    dur = time.Since(start)
-    fmt.Println("sort time")
-    fmt.Println(dur)
+    //start = time.Now()
+    //sort.Sort(ByIndex(resultsSlice))
+    //dur = time.Since(start)
+    //fmt.Println("sort time")
+    //fmt.Println(dur)
 
-    start = time.Now()
+    //start = time.Now()
+    /*
     for _, res := range resultsSlice {
         if res.err != nil {
             return nil, res.err
@@ -145,15 +198,22 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
             return nil, err
         }
     }
-    dur = time.Since(start)
-    fmt.Println("read time sort asdf")
-    fmt.Println(dur)
+    */
+    //dur = time.Since(start)
+    //fmt.Println("read time sort asdf")
+    //fmt.Println(dur)
 
     start = time.Now()
-    blahblah := bytes.NewReader(totalResults.Bytes())
+    wg.Wait()
     dur = time.Since(start)
-    fmt.Println("reader build")
+    fmt.Println("waitgroup time")
     fmt.Println(dur)
+
+    //start = time.Now()
+    blahblah := bytes.NewReader(totalResults.Bytes())
+    //dur = time.Since(start)
+    //fmt.Println("reader build")
+    //fmt.Println(dur)
     return blahblah, nil
     //return bytes.NewReader(totalResults.Bytes()), nil
 }

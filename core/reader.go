@@ -7,6 +7,23 @@ import (
 	"strings"
 )
 
+func ReadReverseNLinesFast(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
+	if numLines == 0 {
+		return nil, nil
+	}
+
+	count := uint64(0)
+	return readReverseFast(
+		buffer,
+		func(string) bool {
+			count++
+			return true
+		},
+		func() (bool, error) {
+			return count < numLines, nil
+		})
+}
+
 func ReadReverseNLines(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, error) {
 	if numLines == 0 {
 		return nil, nil
@@ -34,6 +51,24 @@ func ReadReversePassesFilter(buffer io.ReadSeeker, expr string) (io.ReadSeeker, 
 			pos, err := buffer.Seek(0, io.SeekCurrent)
 			return pos > 0, err
 		})
+}
+
+func readLineReverseFast(buffer io.ReadSeeker) (string, error) {
+	var reverseBuffer []byte
+	end, _ := buffer.Seek(0, io.SeekCurrent)
+	for {
+		buffer.Seek(-1, io.SeekCurrent)
+		var charBuffer [1]byte
+		buffer.Read(charBuffer[:])
+		if charBuffer[0] == '\n' {
+			start, _ := buffer.Seek(0, io.SeekCurrent)
+			reverseBuffer = make([]byte, end-start)
+			buffer.Read(reverseBuffer)
+			break
+		}
+		buffer.Seek(-1, io.SeekCurrent)
+	}
+	return string(reverseBuffer), nil
 }
 
 func readLineReverse(buffer io.ReadSeeker) (string, error) {
@@ -67,6 +102,26 @@ func readLineReverse(buffer io.ReadSeeker) (string, error) {
 	}
 
 	return string(core_utils.ReverseBytes(reverseBuffer)), nil
+}
+
+func readReverseFast(buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) (io.ReadSeeker, error) {
+	var results bytes.Buffer
+	for {
+		line, err := readLineReverseFast(buffer)
+		if err != nil {
+			return nil, err
+		} else if isValid(line) {
+			results.WriteString(line)
+		}
+
+		ok, err := keepReading()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+	}
+	return bytes.NewReader(results.Bytes()), nil
 }
 
 func readReverse(buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) (io.ReadSeeker, error) {
