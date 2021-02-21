@@ -76,7 +76,7 @@ func TestExistentFile_ValidQuery_InvalidMethod(t *testing.T) {
 }
 
 func BenchmarkLargeFileRead_SingleRequest(b *testing.B) {
-	res, err := http.NewRequest("GET", "/syslog_large?lines=10000", nil)
+	res, err := http.NewRequest("GET", "/syslog_large?lines=1000", nil)
 	assert.Nil(b, err)
 	router := getRouter("../files/")
 
