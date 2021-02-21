@@ -40,10 +40,24 @@ func TestEqualBleh(t *testing.T) {
     io.Copy(bf, b)
 }
 
+func BenchmarkLargeFile_SingleRequestnada(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := ReadReverseNLines("../files/syslog_large", 100000)
+		assert.Nil(b, err)
+	}
+}
 func BenchmarkLargeFile_SingleRequestPoc(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := PocReadReverseNLines("../files/syslog_large", 100000)
 		assert.Nil(b, err)
+	}
+}
+func BenchmarkLargeFile_SingleRequestPoc_new(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		res, err := PocReadReverseNLinesNew("../files/syslog_large", 100000)
+		_ = res
+		_ = err
+		//assert.Nil(b, err)
 	}
 }
 

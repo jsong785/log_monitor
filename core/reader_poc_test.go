@@ -1,8 +1,10 @@
 package core
 
 import (
+    "io"
 	"github.com/stretchr/testify/assert"
         "bytes"
+        "strings"
 	"testing"
 )
 
@@ -19,6 +21,17 @@ func CreateBlock(prefix string, main string, suffix string) ParseBlock {
             block.suffix = []byte(suffix)
         }
         return block
+}
+
+func TestReadNLines(t *testing.T) {
+    reader := strings.NewReader("123\n456\n789\n")
+    reader.Seek(0, io.SeekEnd)
+    res, err := Hello(reader, 1, 10000000)
+    
+    var buf bytes.Buffer
+    buf.ReadFrom(res)
+    assert.Equal(t, "789\n", buf.String())
+    assert.Nil(t, err)
 }
 
 func TestReverse(t *testing.T) {
@@ -60,7 +73,71 @@ func TestStitchOtherBlockPrefix(t *testing.T) {
         assert.Equal(t, uint64(0), stitched.mainCount)
     }()
 
-    // stitch two empty 2
+    // stitch two empty blocks with prefixes
+    func() {
+        one := CreateBlock("a", "", "")
+        two := CreateBlock("b", "", "")
+
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("b"), stitched.main)
+        assert.Nil(t, stitched.suffix)
+        assert.Equal(t, uint64(1), stitched.mainCount)
+    }()
+
+    func() {
+        one := CreateBlock("a", "", "")
+        two := CreateBlock("b", "c", "")
+
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("b"), stitched.main)
+        assert.Nil(t, stitched.suffix)
+        assert.Equal(t, uint64(1), stitched.mainCount)
+    }()
+
+    func() {
+        one := CreateBlock("a", "", "")
+        two := CreateBlock("b", "c", "d")
+
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("b"), stitched.main)
+        assert.Nil(t, stitched.suffix)
+        assert.Equal(t, uint64(1), stitched.mainCount)
+    }()
+
+    func() {
+        one := CreateBlock("a", "x", "")
+        two := CreateBlock("b", "c", "d")
+
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("xb"), stitched.main)
+        assert.Equal(t, uint64(2), stitched.mainCount)
+    }()
+
+    func() {
+        one := CreateBlock("a", "", "")
+        two := CreateBlock("b", "c", "d")
+
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("b"), stitched.main)
+        assert.Equal(t, uint64(1), stitched.mainCount)
+    }()
+
+    func() {
+        one := CreateBlock("a", "b", "c")
+        two := CreateBlock("", "d", "e")
+
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("b"), stitched.main)
+        assert.Nil(t,  stitched.suffix)
+        assert.Equal(t, uint64(1), stitched.mainCount)
+    }()
+
     func() {
         one := CreateBlock("a", "", "")
         two := CreateBlock("", "", "b")
@@ -73,72 +150,26 @@ func TestStitchOtherBlockPrefix(t *testing.T) {
     }()
 
     func() {
-        one := CreateBlock("", "a", "")
-        two := CreateBlock("", "b", "")
+        one := CreateBlock("a", "b", "")
+        two := CreateBlock("c", "d", "")
 
         stitched := StitchOtherBlockPrefix(one, two)
-        assert.Nil(t, stitched.prefix)
-        assert.Equal(t, []byte("a"), stitched.main)
-        assert.Nil(t, stitched.suffix)
-        assert.Equal(t, uint64(1), stitched.mainCount)
-    }()
-
-    // combines on an otherwise empty set
-    func() {
-        one := CreateBlock("", "", "a")
-        two := CreateBlock("b", "", "")
-
-        stitched := StitchOtherBlockPrefix(one, two)
-        assert.Nil(t, stitched.prefix)
-        assert.Equal(t, []byte("ab"), stitched.main)
-        assert.Nil(t, stitched.suffix)
-        assert.Equal(t, uint64(1), stitched.mainCount)
-    }()
-
-    // suffix doesn't count for a stitch
-    func() {
-        one := CreateBlock("", "a", "b")
-        two := CreateBlock("", "c", "")
-
-        stitched := StitchOtherBlockPrefix(one, two)
-        assert.Nil(t, stitched.prefix)
-        assert.Equal(t, []byte("a"), stitched.main)
-        assert.Nil(t, stitched.suffix)
-        assert.Equal(t, uint64(1), stitched.mainCount)
-    }()
-
-    // prefix on the other does
-    func() {
-        one := CreateBlock("", "a", "")
-        two := CreateBlock("b", "c", "")
-
-        stitched := StitchOtherBlockPrefix(one, two)
-        assert.Nil(t, stitched.prefix)
-        assert.Equal(t, []byte("ab"), stitched.main)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("bc"), stitched.main)
         assert.Nil(t, stitched.suffix)
         assert.Equal(t, uint64(2), stitched.mainCount)
     }()
-}
 
-func TestStitch(t *testing.T) {
-    res, count := Stitch(nil)
-    assert.Equal(t, 0, len(res.Bytes()))
-    assert.Equal(t, uint64(0), count)
+    func() {
+        one := CreateBlock("a", "", "")
+        two := CreateBlock("c", "d", "")
 
-    one := CreateBlock("a", "b", "c")
-    res, count = StitchArgs(one)
-    assert.Equal(t, "b", res.String())
-    assert.Equal(t, uint64(1), count)
-
-    two := CreateBlock("d", "e", "f")
-    res, count = StitchArgs(one, two) // c and d become "one line"
-    assert.Equal(t, "bcde", res.String())
-    assert.Equal(t, uint64(3), count)
-
-    three := CreateBlock("g", "h", "i") // "c/d and f/g become "one line"
-    res, count = StitchArgs(one, two, three)
-    assert.Equal(t, "bcdefgh", res.String())
-    assert.Equal(t, uint64(5), count)
+        stitched := StitchOtherBlockPrefix(one, two)
+        assert.Equal(t, []byte("a"), stitched.prefix)
+        assert.Equal(t, []byte("c"), stitched.main)
+        assert.Nil(t, stitched.suffix)
+        assert.Equal(t, uint64(1), stitched.mainCount)
+    }()
 }
 
 func TestGetParseBlock(t *testing.T) {
@@ -154,7 +185,7 @@ func TestGetParseBlock(t *testing.T) {
     assert.Equal(t, block.mainCount, uint64(0))
     assert.Nil(t, block.prefix)
     assert.Nil(t, block.main)
-    assert.Nil(t, block.suffix)
+    assert.Equal(t, []byte("123"), block.suffix)
 
     // blank line
     block = GetParseBlock(bytes.NewBufferString("\n").Bytes())
