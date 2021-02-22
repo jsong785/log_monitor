@@ -3,49 +3,92 @@ package core
 import (
     "io"
 	"github.com/stretchr/testify/assert"
-        "bytes"
-        "strings"
+    "bytes"
+    "strings"
 	"testing"
 )
 
-func CreateBlock(prefix string, main string, suffix string) ParseBlock {
-        var block ParseBlock
-        if len(prefix) > 0 {
-            block.prefix = []byte(prefix)
-        }
-        if len(main) > 0 {
-            block.main = []byte(main)
-            block.mainCount = 1
-        }
-        if len(suffix) > 0 {
-            block.suffix = []byte(suffix)
-        }
-        return block
+func TestreadChunk(t *testing.T) {
+    // empty
+    func () {
+        reader := strings.NewReader("")
+        reader.Seek(0, io.SeekEnd)
+        block, amt, err := readChunk(reader, 1)
+        assert.Equal(t, block, CreateBlock("","",""))
+        assert.Equal(t, uint64(0), amt)
+        assert.Nil(t, err)
+
+        reader.Seek(0, io.SeekEnd)
+        block, amt, err = readChunk(reader, 2)
+        assert.Equal(t, block, CreateBlock("","",""))
+        assert.Equal(t, uint64(0), amt)
+        assert.Nil(t, err)
+    }()
+
+    // each chunk lands on perfect lines
+    func () {
+        reader := strings.NewReader("123\n456\n789\n")
+        reader.Seek(0, io.SeekEnd)
+
+        b1, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b1, CreateBlock("789\n","",""))
+        assert.Equal(t, uint64(1), amt)
+        assert.Nil(t, err)
+
+        b2, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b2, CreateBlock("456\n","",""))
+        assert.Equal(t, uint64(3), amt)
+        assert.Nil(t, err)
+
+        b3, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b3, CreateBlock("123\n","",""))
+        assert.Equal(t, uint64(3), amt)
+        assert.Nil(t, err)
+    }()
+
+    // each chunk does not land on perfect lines
+    func () {
+        reader := strings.NewReader("123\n4567\n7890123\n")
+        reader.Seek(0, io.SeekEnd)
+
+        b1, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b1, CreateBlock("123\n","",""))
+        assert.Equal(t, uint64(4), amt)
+        assert.Nil(t, err)
+
+        b2, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b2, CreateBlock("7890","",""))
+        assert.Equal(t, uint64(4), amt)
+        assert.Nil(t, err)
+
+        b3, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b3, CreateBlock("567\n","",""))
+        assert.Equal(t, uint64(4), amt)
+        assert.Nil(t, err)
+
+        b4, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b4, CreateBlock("23\n","","4"))
+        assert.Equal(t, uint64(4), amt)
+        assert.Nil(t, err)
+
+        b5, amt, err := readChunk(reader, 4)
+        assert.Equal(t, b5, CreateBlock("1","",""))
+        assert.Equal(t, uint64(1), amt)
+        assert.Nil(t, err)
+    }()
 }
 
 func TestReadNLines(t *testing.T) {
     reader := strings.NewReader("123\n456\n789\n")
     reader.Seek(0, io.SeekEnd)
-    res, err := Hello(reader, 1, 100)
+    res, err := HelloWorld(reader, 3, 100)
+    //_ = res
+    //assert.Nil(t, err)
+    assert.Nil(t, err)
     
     var buf bytes.Buffer
     buf.ReadFrom(res)
-    assert.Equal(t, "789\n", buf.String())
-    assert.Nil(t, err)
-}
-
-func TestReverse(t *testing.T) {
-    assert.Nil(t, Reverse(nil))
-
-    a := CreateBlock("a", "b", "c")
-    b := CreateBlock("d", "e", "f")
-    c := CreateBlock("g", "h", "i")
-    assert.Equal(t, []ParseBlock{ c, b, a }, Reverse([]ParseBlock{a, b, c}))
-    assert.NotEqual(t, []ParseBlock{ a, b, c }, Reverse([]ParseBlock{a, b, c}))
-
-    d := CreateBlock("j", "k", "l")
-    assert.Equal(t, []ParseBlock{ d, c, b, a }, Reverse([]ParseBlock{a, b, c,d }))
-    assert.NotEqual(t, []ParseBlock{ a, b, c, d }, Reverse([]ParseBlock{a, b, c, d}))
+    assert.Equal(t, "789\n456\n123\n", buf.String())
 }
 
 func TestStitchOtherBlockPrefix(t *testing.T) {
@@ -251,3 +294,17 @@ func TestGetParseBlock(t *testing.T) {
     assert.Equal(t, []byte("4"), block.suffix)
 }
 
+func CreateBlock(prefix string, main string, suffix string) ParseBlock {
+        var block ParseBlock
+        if len(prefix) > 0 {
+            block.prefix = []byte(prefix)
+        }
+        if len(main) > 0 {
+            block.main = []byte(main)
+            block.mainCount = 1
+        }
+        if len(suffix) > 0 {
+            block.suffix = []byte(suffix)
+        }
+        return block
+}

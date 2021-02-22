@@ -38,7 +38,7 @@ func serveNLines(baseDir string) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		res, err := file_reader.ReadReverseNLines(path, n)
+		res, err := file_reader.PocReadReverseNLinesNew(path, n)
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -50,7 +50,7 @@ func serveNLines(baseDir string) http.HandlerFunc {
 func serveFilterLines(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path, filter := filterLinesParse(baseDir, r)
-		res, err := file_reader.ReadReversePassesFilter(path, filter)
+		res, err := file_reader.PocReadReversePassesFilterNew(path, filter)
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -68,9 +68,9 @@ func serveLinesThenFilter(baseDir string) http.HandlerFunc {
 			return
 		}
 
-		res, err := file_reader.ReadReverseNLines(path, n)
+		res, err := file_reader.PocReadReverseNLinesNew(path, n)
 		res, err = core_utils.LogFuncBind(res, err, func(buf io.ReadSeeker) (io.ReadSeeker, error) {
-			return core.ReadReversePassesFilter(buf, filter)
+			return core.HelloWorldFilter(buf, filter, 64000)
 		})
 		if err != nil {
 			http.NotFound(w, r)

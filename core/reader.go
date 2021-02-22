@@ -16,7 +16,7 @@ func ReadReverseNLines(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, er
 }
 
 func ReadReversePassesFilter(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
-	return readReversePassesFilterHelper(buffer, expr, false)
+	return readReversePassesFilterHelper(buffer, expr,false)
 }
 
 func ReadReversePassesFilterFast(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
