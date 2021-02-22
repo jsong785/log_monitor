@@ -2,7 +2,9 @@ package file_reader
 
 import (
 	"github.com/stretchr/testify/assert"
+	"io"
 	"log_monitor/monitor/test_utils"
+	"os"
 	"sync"
 	"testing"
 )
@@ -19,20 +21,18 @@ func TestReadLastLinesContainsString_File_small(t *testing.T) {
 	assert.Equal(t, []string{"_world\n", "_hello\n"}, test_utils.GetLines(line))
 }
 
-/*
 func TestEqual(t *testing.T) {
-    a, _ := ReadReverseNLines("../files/syslog_large", 1000)
-    b, err := PocReadReverseNLinesNew("../files/syslog_large", 1000)
+	a, _ := ReadReverseNLines("../files/syslog_large", 1000)
+	b, err := ReadReverseNLinesChunk("../files/syslog_large", 1000)
 	assert.Nil(t, err)
-    af, _ := os.Create("AAA")
-    defer af.Close()
-    io.Copy(af, a)
+	af, _ := os.Create("AAA")
+	defer af.Close()
+	io.Copy(af, a)
 
-    bf, _ := os.Create("BBB")
-    defer bf.Close()
-    io.Copy(bf, b)
+	bf, _ := os.Create("BBB")
+	defer bf.Close()
+	io.Copy(bf, b)
 }
-*/
 
 func BenchmarkLargeFile_SingleRequest(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -40,18 +40,18 @@ func BenchmarkLargeFile_SingleRequest(b *testing.B) {
 		assert.Nil(b, err)
 	}
 }
-func BenchmarkLargeFile_SingleRequestPoc(b *testing.B) {
+func BenchmarkLargeFile_SingleRequestChunk(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		res, err := PocReadReverseNLinesNew("../files/syslog_large", 1000)
+		res, err := ReadReverseNLinesChunk("../files/syslog_large", 1000)
 		_ = res
 		_ = err
 		//assert.Nil(b, err)
 	}
 }
 
-func BenchmarkLargeFile_SingleRequestPoc100K(b *testing.B) {
+func BenchmarkLargeFile_SingleRequestChunk100K(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		res, err := PocReadReverseNLinesNew("../files/syslog_large", 100000)
+		res, err := ReadReverseNLinesChunk("../files/syslog_large", 100000)
 		_ = res
 		_ = err
 		//assert.Nil(b, err)
@@ -72,14 +72,14 @@ func BenchmarkLargeFile_ManyRequests(b *testing.B) {
 		wg.Wait()
 	}
 }
-func BenchmarkLargeFile_ManyRequestsPoc(b *testing.B) {
+func BenchmarkLargeFile_ManyRequestsChunk(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var wg sync.WaitGroup
 		for j := 0; j < 1000; j++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := PocReadReverseNLinesNew("../files/syslog_large", 1000)
+				_, err := ReadReverseNLinesChunk("../files/syslog_large", 1000)
 				assert.Nil(b, err)
 			}()
 		}

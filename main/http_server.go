@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"io"
 	"log"
-	"log_monitor/monitor/core"
+	"log_monitor/monitor/chunk_reader"
 	"log_monitor/monitor/core_utils"
 	"log_monitor/monitor/file_reader"
 	"net/http"
@@ -38,7 +38,7 @@ func serveNLines(baseDir string) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		res, err := file_reader.PocReadReverseNLinesNew(path, n)
+		res, err := file_reader.ReadReverseNLinesChunk(path, n)
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -50,7 +50,7 @@ func serveNLines(baseDir string) http.HandlerFunc {
 func serveFilterLines(baseDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path, filter := filterLinesParse(baseDir, r)
-		res, err := file_reader.PocReadReversePassesFilterNew(path, filter)
+		res, err := file_reader.ReadReversePassesFilterChunk(path, filter)
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -68,9 +68,9 @@ func serveLinesThenFilter(baseDir string) http.HandlerFunc {
 			return
 		}
 
-		res, err := file_reader.PocReadReverseNLinesNew(path, n)
+		res, err := file_reader.ReadReverseNLinesChunk(path, n)
 		res, err = core_utils.LogFuncBind(res, err, func(buf io.ReadSeeker) (io.ReadSeeker, error) {
-			return core.HelloWorldFilter(buf, filter, 64000)
+			return chunk_reader.ReadReversePassesFilter(buf, filter, 64000)
 		})
 		if err != nil {
 			http.NotFound(w, r)

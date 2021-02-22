@@ -16,7 +16,7 @@ func ReadReverseNLines(buffer io.ReadSeeker, numLines uint64) (io.ReadSeeker, er
 }
 
 func ReadReversePassesFilter(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
-	return readReversePassesFilterHelper(buffer, expr,false)
+	return readReversePassesFilterHelper(buffer, expr, false)
 }
 
 func ReadReversePassesFilterFast(buffer io.ReadSeeker, expr string) (io.ReadSeeker, error) {
@@ -31,8 +31,8 @@ func readReversePassesFilterHelper(buffer io.ReadSeeker, expr string, sanitary b
 	}
 
 	keepReadingFunc := func() (bool, error) {
-			pos, err := buffer.Seek(0, io.SeekCurrent)
-			return pos > 0, err
+		pos, err := buffer.Seek(0, io.SeekCurrent)
+		return pos > 0, err
 	}
 
 	if sanitary {
@@ -50,12 +50,12 @@ func readReverseNLinesHelper(buffer io.ReadSeeker, numLines uint64, sanitary boo
 	}
 
 	count := uint64(0)
-	validFunc := func (string) bool {
-				count++
-				return true
+	validFunc := func(string) bool {
+		count++
+		return true
 	}
 	keepReadingFunc := func() (bool, error) {
-				return count < numLines, nil
+		return count < numLines, nil
 	}
 
 	if sanitary {
@@ -66,6 +66,7 @@ func readReverseNLinesHelper(buffer io.ReadSeeker, numLines uint64, sanitary boo
 }
 
 type reverseLineReader func(io.ReadSeeker) (string, error)
+
 func readReverse(reader reverseLineReader, buffer io.ReadSeeker, isValid func(string) bool, keepReading func() (bool, error)) (io.ReadSeeker, error) {
 	var results bytes.Buffer
 	for {

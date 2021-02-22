@@ -1,8 +1,8 @@
 package core
 
 import (
-	"errors"
 	"bytes"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log_monitor/monitor/core_utils"
@@ -57,10 +57,10 @@ func TestreadLineReverseFast(t *testing.T) {
 
 func TestReadReverseNLinesFast(t *testing.T) {
 	// empty
-	func () {
+	func() {
 		reader := strings.NewReader("")
 		reader.Seek(0, io.SeekEnd)
-		
+
 		res, err := ReadReverseNLinesFast(reader, 0)
 		assert.Nil(t, res)
 		assert.Nil(t, err)
@@ -77,7 +77,7 @@ func TestReadReverseNLinesFast(t *testing.T) {
 	}()
 
 	// not empty
-	func () {
+	func() {
 		getString := func(reader io.ReadSeeker) string {
 			var buffer bytes.Buffer
 			buffer.ReadFrom(reader)
@@ -86,7 +86,7 @@ func TestReadReverseNLinesFast(t *testing.T) {
 
 		reader := strings.NewReader("123\n456\n789\n\n")
 		reader.Seek(0, io.SeekEnd)
-		
+
 		res, err := ReadReverseNLinesFast(reader, 0)
 		assert.Nil(t, res)
 		assert.Nil(t, err)
@@ -104,17 +104,17 @@ func TestReadReverseNLinesFast(t *testing.T) {
 		assert.Nil(t, err)
 
 		res, err = ReadReverseNLinesFast(reader, 1)
-		assert.Nil(t,res )
+		assert.Nil(t, res)
 		assert.NotNil(t, err)
 	}()
 }
 
 func TestReadReversePassesFilter(t *testing.T) {
 	// empty
-	func () {
+	func() {
 		reader := strings.NewReader("")
 		reader.Seek(0, io.SeekEnd)
-		
+
 		res, err := ReadReversePassesFilter(reader, "")
 		assert.Nil(t, res)
 		assert.NotNil(t, err)
@@ -131,7 +131,7 @@ func TestReadReversePassesFilter(t *testing.T) {
 	}()
 
 	// not empty
-	func () {
+	func() {
 		getString := func(reader io.ReadSeeker) string {
 			var buffer bytes.Buffer
 			buffer.ReadFrom(reader)
@@ -140,7 +140,7 @@ func TestReadReversePassesFilter(t *testing.T) {
 
 		reader := strings.NewReader("pass\nabc\npassabc\ndef\npassdef\n\n")
 		reader.Seek(0, io.SeekEnd)
-		
+
 		res, err := ReadReversePassesFilter(reader, "pass")
 		assert.Equal(t, "passdef\npassabc\npass\n", getString(res))
 		assert.Nil(t, err)

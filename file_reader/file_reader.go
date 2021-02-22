@@ -2,12 +2,15 @@ package file_reader
 
 import (
 	"io"
+	"log_monitor/monitor/chunk_reader"
 	"log_monitor/monitor/core"
 	"log_monitor/monitor/core_utils"
 	"os"
 )
 
-func PocReadReverseNLinesNew(filename string, numLines uint64) (io.ReadSeeker, error) {
+const chunkSize = int64(64000)
+
+func ReadReverseNLinesChunk(filename string, numLines uint64) (io.ReadSeeker, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -16,11 +19,11 @@ func PocReadReverseNLinesNew(filename string, numLines uint64) (io.ReadSeeker, e
 
 	buffer, err := core_utils.SeekEnd(file)
 	return core_utils.LogFuncBind(buffer, err, func(b io.ReadSeeker) (io.ReadSeeker, error) {
-		return core.HelloWorld(b, numLines, 64000)
+		return chunk_reader.ReadReverseNLines(b, numLines, chunkSize)
 	})
 }
 
-func PocReadReversePassesFilterNew(filename string, expr string) (io.ReadSeeker, error) {
+func ReadReversePassesFilterChunk(filename string, expr string) (io.ReadSeeker, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -29,7 +32,7 @@ func PocReadReversePassesFilterNew(filename string, expr string) (io.ReadSeeker,
 
 	buffer, err := core_utils.SeekEnd(file)
 	return core_utils.LogFuncBind(buffer, err, func(b io.ReadSeeker) (io.ReadSeeker, error) {
-		return core.HelloWorldFilter(b, expr, 64000)
+		return chunk_reader.ReadReversePassesFilter(b, expr, chunkSize)
 	})
 }
 
