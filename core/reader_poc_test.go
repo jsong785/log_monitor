@@ -26,7 +26,7 @@ func CreateBlock(prefix string, main string, suffix string) ParseBlock {
 func TestReadNLines(t *testing.T) {
     reader := strings.NewReader("123\n456\n789\n")
     reader.Seek(0, io.SeekEnd)
-    res, err := Hello(reader, 1, 10000000)
+    res, err := Hello(reader, 1, 100)
     
     var buf bytes.Buffer
     buf.ReadFrom(res)

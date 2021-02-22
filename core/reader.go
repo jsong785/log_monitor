@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log_monitor/monitor/core_utils"
 	"strings"
@@ -56,18 +57,31 @@ func ReadReversePassesFilter(buffer io.ReadSeeker, expr string) (io.ReadSeeker, 
 func readLineReverseFast(buffer io.ReadSeeker) (string, error) {
 	var reverseBuffer []byte
 	end, _ := buffer.Seek(0, io.SeekCurrent)
+	found := false
 	for {
-		buffer.Seek(-1, io.SeekCurrent)
-		var charBuffer [1]byte
-		buffer.Read(charBuffer[:])
-		if charBuffer[0] == '\n' {
-			start, _ := buffer.Seek(0, io.SeekCurrent)
+		pos,_ := buffer.Seek(-1, io.SeekCurrent)
+		if pos == 0 {
+			start := int64(0)
 			reverseBuffer = make([]byte, end-start)
 			buffer.Read(reverseBuffer)
 			break
 		}
+		var charBuffer [1]byte
+		buffer.Read(charBuffer[:])
+		if charBuffer[0] == '\n' {
+			if !found {
+				found = true
+			} else {
+				start, _ := buffer.Seek(0, io.SeekCurrent)
+				reverseBuffer = make([]byte, end-start)
+				buffer.Read(reverseBuffer)
+				break
+			}
+		}
 		buffer.Seek(-1, io.SeekCurrent)
 	}
+	fmt.Println("emergency")
+	fmt.Println(reverseBuffer)
 	return string(reverseBuffer), nil
 }
 

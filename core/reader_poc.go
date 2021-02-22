@@ -1,8 +1,8 @@
 package core
 
 import (
-    "sync"
-    "sync/atomic"
+    //"sync"
+    //"sync/atomic"
     "bytes"
     "errors"
     "fmt"
@@ -28,53 +28,13 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
     var totalResults bytes.Buffer
 
     resultsChannel := make(chan ParseResult)
+    resultsSlice := make([]ParseResult, 0)
 
     firstLoop := true
     forceBreak := false
     lineCount := uint64(0)
     var lastBlock ParseBlock
     validBlockIndex := uint64(0)
-    atomicbreak := int32(0)
-
-
-    var wg sync.WaitGroup
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-        index := 0
-        resultsSlice := make([]ParseResult, 0)
-        for {
-            select {
-            case res := <-resultsChannel:
-                    if res.index ==uint64(index) {
-                        totalResults.ReadFrom(res.result)
-                        index++
-                    } else {
-                        resultsSlice = append(resultsSlice, res)
-                    }
-                default:
-                    for _, sl := range resultsSlice {
-                        if sl.index == uint64(index) {
-                            totalResults.ReadFrom(sl.result)
-                            index++
-                        }
-                    }
-                    break
-            }
-
-            if atomic.LoadInt32(&atomicbreak) > 0 {
-                    res := <-resultsChannel
-                    resultsSlice = append(resultsSlice, res)
-                sort.Sort(ByIndex(resultsSlice))
-                for _, res := range resultsSlice {
-                    _, err := totalResults.ReadFrom(res.result)
-                    _ = err
-                }
-                break
-            }
-        }
-        //fmt.Println("existing")
-    }()
 
     start := time.Now()
     for lineCount < nLines && !forceBreak {
@@ -89,10 +49,12 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
             firstLoop = false
             seekBackAmt = cacheSz
         }
-        if currentPos < readBufferSz {
+        if currentPos < seekBackAmt {
+            fmt.Println("this")
             forceBreak = true
             readBufferSz = currentPos
             seekBackAmt = currentPos
+            fmt.Println(readBufferSz)
         }
 
         currentPos, err = buffer.Seek(-seekBackAmt, io.SeekCurrent)
@@ -109,26 +71,27 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
         }
 
         block := GetParseBlock(readBuffer)
-        //fmt.Println("block diagnostics")
-        //fmt.Println(block)
-        //fmt.Printf("%s, %s, %s\n", string(block.prefix), string(block.main), string(block.suffix))
-        //fmt.Println(lastBlock)
-        //fmt.Printf("%s, %s, %s\n", string(lastBlock.prefix), string(lastBlock.main), string(lastBlock.suffix))
+        fmt.Println("block diagnostics")
+        fmt.Println(block)
+        fmt.Printf("%s, %s, %s\n", string(block.prefix), string(block.main), string(block.suffix))
+        fmt.Println(lastBlock)
+        fmt.Printf("%s, %s, %s\n", string(lastBlock.prefix), string(lastBlock.main), string(lastBlock.suffix))
         block = StitchOtherBlockPrefix(block, lastBlock)
         lastBlock = block
         if block.main != nil {
-            //fmt.Println("valid block diagnostics")
-            //fmt.Println(block)
-            //fmt.Printf("%s, %s, %s\n", string(block.prefix), string(block.main), string(block.suffix))
-            //fmt.Println("main")
-            //fmt.Println(block.mainCount)
+            fmt.Println("valid block diagnostics")
+            fmt.Println(block)
+            fmt.Printf("%s, %s, %s\n", string(block.prefix), string(block.main), string(block.suffix))
+            fmt.Println("main")
+            fmt.Println(block.mainCount)
             lineCount += block.mainCount
+            fmt.Println(lineCount)
             linesToRead := block.mainCount
             if lineCount > nLines {
                 linesToRead -= lineCount - nLines
             }
-            //fmt.Println("wakasdf")
-            //fmt.Println(linesToRead)
+            fmt.Println("wakasdf")
+            fmt.Println(linesToRead)
             go func(buf []byte, nLines uint64, index uint64) {
                 reader := bytes.NewReader(buf)
                 reader.Seek(0, io.SeekEnd)
@@ -137,8 +100,11 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
                 //dur := time.Since(s)
                 //fmt.Println("individual")
                 //fmt.Println(dur)
-                //fmt.Println("results gotten")
+                fmt.Println("results gotten")
                 //fmt.Println(nLines)
+                //var bleh bytes.Buffer
+                //bleh.ReadFrom(res)
+                //fmt.Println(bleh.String())
                 resultsChannel <- ParseResult{
                     index: index,
                     result: res,
@@ -152,17 +118,15 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
             //fmt.Println(string(block.main))
         }
 
-        /*
         select {
         case res:= <- resultsChannel:
             resultsSlice = append(resultsSlice, res)
         default:
             break
         }
-        */
     }
 
-    atomic.AddInt32(&atomicbreak, 1)
+    //atomic.AddInt32(&atomicbreak, 1)
 
     dur := time.Since(start)
     fmt.Println("total runtime of loop")
@@ -171,24 +135,21 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
     //fmt.Println("slice len")
     //fmt.Println(len(resultsSlice))
     //start = time.Now()
-    /*
     for uint64(len(resultsSlice)) < validBlockIndex {
         res := <-resultsChannel
         resultsSlice = append(resultsSlice, res)
     }
-    */
     //dur = time.Since(start)
     //fmt.Println("slice time")
     //fmt.Println(dur)
 
     //start = time.Now()
-    //sort.Sort(ByIndex(resultsSlice))
+    sort.Sort(ByIndex(resultsSlice))
     //dur = time.Since(start)
     //fmt.Println("sort time")
     //fmt.Println(dur)
 
     //start = time.Now()
-    /*
     for _, res := range resultsSlice {
         if res.err != nil {
             return nil, res.err
@@ -198,13 +159,12 @@ func Hello(buffer io.ReadSeeker, nLines uint64, cacheSz int64) (io.ReadSeeker, e
             return nil, err
         }
     }
-    */
     //dur = time.Since(start)
     //fmt.Println("read time sort asdf")
     //fmt.Println(dur)
 
     start = time.Now()
-    wg.Wait()
+    //wg.Wait()
     dur = time.Since(start)
     fmt.Println("waitgroup time")
     fmt.Println(dur)
