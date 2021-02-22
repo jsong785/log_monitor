@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log_monitor/monitor/core_utils"
@@ -9,6 +10,146 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestreadLineReverseFast(t *testing.T) {
+	//empty
+	func() {
+		reader := strings.NewReader("")
+		reader.Seek(0, io.SeekEnd)
+
+		line, err := readLineReverseFast(reader)
+		assert.Equal(t, 0, len(line))
+		assert.NotNil(t, err)
+	}()
+
+	// empty new line
+	func() {
+		reader := strings.NewReader("\n")
+		reader.Seek(0, io.SeekEnd)
+
+		line, err := readLineReverseFast(reader)
+		assert.Equal(t, "\n", line)
+		assert.Nil(t, err)
+	}()
+
+	// 3 lines
+	func() {
+		reader := strings.NewReader("123\n456\n\n")
+		reader.Seek(0, io.SeekEnd)
+
+		line, err := readLineReverseFast(reader)
+		assert.Equal(t, "\n", line)
+		assert.Nil(t, err)
+
+		line, err = readLineReverseFast(reader)
+		assert.Equal(t, "456\n", line)
+		assert.Nil(t, err)
+
+		line, err = readLineReverseFast(reader)
+		assert.Equal(t, "123\n", line)
+		assert.Nil(t, err)
+
+		line, err = readLineReverseFast(reader)
+		assert.Equal(t, 0, len(line))
+		assert.NotNil(t, err)
+	}()
+}
+
+func TestReadReverseNLinesFast(t *testing.T) {
+	// empty
+	func () {
+		reader := strings.NewReader("")
+		reader.Seek(0, io.SeekEnd)
+		
+		res, err := ReadReverseNLinesFast(reader, 0)
+		assert.Nil(t, res)
+		assert.Nil(t, err)
+
+		reader.Seek(0, io.SeekEnd)
+		res, err = ReadReverseNLinesFast(reader, 1)
+		assert.Nil(t, res)
+		assert.NotNil(t, err)
+
+		reader.Seek(0, io.SeekEnd)
+		res, err = ReadReverseNLinesFast(reader, 2)
+		assert.Nil(t, res)
+		assert.NotNil(t, err)
+	}()
+
+	// not empty
+	func () {
+		getString := func(reader io.ReadSeeker) string {
+			var buffer bytes.Buffer
+			buffer.ReadFrom(reader)
+			return buffer.String()
+		}
+
+		reader := strings.NewReader("123\n456\n789\n\n")
+		reader.Seek(0, io.SeekEnd)
+		
+		res, err := ReadReverseNLinesFast(reader, 0)
+		assert.Nil(t, res)
+		assert.Nil(t, err)
+
+		res, err = ReadReverseNLinesFast(reader, 1)
+		assert.Equal(t, "\n", getString(res))
+		assert.Nil(t, err)
+
+		res, err = ReadReverseNLinesFast(reader, 2)
+		assert.Equal(t, "789\n456\n", getString(res))
+		assert.Nil(t, err)
+
+		res, err = ReadReverseNLinesFast(reader, 1)
+		assert.Equal(t, "123\n", getString(res))
+		assert.Nil(t, err)
+
+		res, err = ReadReverseNLinesFast(reader, 1)
+		assert.Nil(t,res )
+		assert.NotNil(t, err)
+	}()
+}
+
+func TestReadReversePassesFilter(t *testing.T) {
+	// empty
+	func () {
+		reader := strings.NewReader("")
+		reader.Seek(0, io.SeekEnd)
+		
+		res, err := ReadReversePassesFilter(reader, "")
+		assert.Nil(t, res)
+		assert.NotNil(t, err)
+
+		reader.Seek(0, io.SeekEnd)
+		res, err = ReadReversePassesFilter(reader, "abc")
+		assert.Nil(t, res)
+		assert.NotNil(t, err)
+
+		reader.Seek(0, io.SeekEnd)
+		res, err = ReadReversePassesFilter(reader, "def")
+		assert.Nil(t, res)
+		assert.NotNil(t, err)
+	}()
+
+	// not empty
+	func () {
+		getString := func(reader io.ReadSeeker) string {
+			var buffer bytes.Buffer
+			buffer.ReadFrom(reader)
+			return buffer.String()
+		}
+
+		reader := strings.NewReader("pass\nabc\npassabc\ndef\npassdef\n\n")
+		reader.Seek(0, io.SeekEnd)
+		
+		res, err := ReadReversePassesFilter(reader, "pass")
+		assert.Equal(t, "passdef\npassabc\npass\n", getString(res))
+		assert.Nil(t, err)
+
+		res, err = ReadReversePassesFilter(reader, "pass")
+		assert.Nil(t, res)
+		assert.NotNil(t, err)
+	}()
+}
 
 func TestreadLineReverse_Empty(t *testing.T) {
 	reader := strings.NewReader("")
@@ -94,7 +235,9 @@ func TestreadReverse_Stop(t *testing.T) {
 	reader.Seek(0, io.SeekEnd)
 	func() {
 		count := 0
-		lines, err := readReverse(reader,
+		lines, err := readReverse(
+			readLineReverse,
+			reader,
 			func(string) bool {
 				count++
 				return true
@@ -110,7 +253,9 @@ func TestreadReverse_Stop(t *testing.T) {
 	reader.Seek(0, io.SeekEnd)
 	func() {
 		count := 0
-		lines, err := readReverse(reader,
+		lines, err := readReverse(
+			readLineReverse,
+			reader,
 			func(string) bool {
 				count++
 				return true
@@ -128,7 +273,9 @@ func TestreadReverse_Stop(t *testing.T) {
 	func() {
 		count := 0
 		valid := true
-		lines, err := readReverse(reader,
+		lines, err := readReverse(
+			readLineReverse,
+			reader,
 			func(string) bool {
 				v := valid
 				valid = !valid
@@ -146,7 +293,9 @@ func TestreadReverse_Stop(t *testing.T) {
 	reader.Reset("apple\ncar\ndefer\nairplane\nzebra\natom\n")
 	reader.Seek(0, io.SeekEnd)
 	func() {
-		lines, err := readReverse(reader,
+		lines, err := readReverse(
+			readLineReverse,
+			reader,
 			func(val string) bool {
 				return len(val) > 0 && val[0] == 'a'
 			},
@@ -161,7 +310,9 @@ func TestreadReverse_Stop(t *testing.T) {
 	// if it never stops, it will error
 	reader.Seek(0, io.SeekEnd)
 	func() {
-		lines, err := readReverse(reader,
+		lines, err := readReverse(
+			readLineReverse,
+			reader,
 			func(string) bool {
 				return true
 			},
@@ -176,7 +327,9 @@ func TestreadReverse_Stop(t *testing.T) {
 	reader.Seek(0, io.SeekEnd)
 	func() {
 		count := 0
-		lines, err := readReverse(reader,
+		lines, err := readReverse(
+			readLineReverse,
+			reader,
 			func(string) bool {
 				return true
 			},
