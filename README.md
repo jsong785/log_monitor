@@ -4,6 +4,11 @@
 To run, package main has the http server.
 Without any arguments supplied, it runs on "localhost:8080" on "/var/log" withe writing request timeout of 2000 milliseconds. Reading a client request timeout is hardcoded to 100ms. 
 
+The supported arguments are:
+- dir="some_dir": directory to watch, trailing slash does not matter.
+- timeout=NUM: write request timeout in milliseconds.
+- addr="": [address:port] to run on.
+
 It is assumed that the user knows which files to query for.
 The supported query commands are:
 - lines
@@ -19,12 +24,12 @@ Ex:
 
 ## design
 I spent most of the time attempting to optimize the file reading capabilities of the system.
-I am getting worse performance than `tail -n 100000 large_file | tac` on my home computer, but on my high powered workstation, I am exceeded performance of the above.
+I am getting worse performance than `tail -n 100000 large_file | tac` on my home computer, but on a high powered workstation, I am exceeded performance of the above.
 
 INSERT_TIMES_HERE
 
 ## file reading
-# synchronous issues
+### synchronous issues
 There are 5 different types of problems that may occur when reading log files. They are:
 - reading from a log file as writing occurs to the end of it; reading may occur in the middle of a new line being written.
 - reading from a log file as a file is deleted (remove or unlink).
@@ -51,7 +56,7 @@ I decided to not attempt to resolve the issues of:
 - limited file descriptors (this can be increased via changing system configuration)
 - caching requests on a file (to an extent, the linux disk cache can handle this; furthermore, caching requests can be non-optimal if the requests on the server are random).
 
-# approach (chunk reading)
+## (chunk reading)
 I spent a lot of time implementing it "righter"; I think there are still edge cases to be had.
 Each chunk has a [prefix, main, suffix]; a prefix always has a valid line, and so does main, a suffix may not have a valid line.
 
