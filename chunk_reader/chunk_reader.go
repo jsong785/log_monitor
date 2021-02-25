@@ -5,7 +5,6 @@ import (
 	"errors"
 	"math"
 	"io"
-	"log_monitor/monitor/core"
 	"sort"
 )
 
@@ -23,66 +22,12 @@ func getReadOffset(direction int, chunk int64, position int64) int64 {
 	}
 }
 
-func GetProcessBlockReverseFuncTestPtr(last *parseBlock, parseFunc func(uint64, parseBlock)) func ([]byte, int, uint64) {
+func GetProcessBlockReverseFunc(last *parseBlock, parseFunc func(uint64, parseBlock)) func ([]byte, int, uint64) {
 	return func(buffer []byte, amt int, index uint64) {
 		block := getParseBlock(buffer[:amt])
 		block = stitchOtherBlockPrefix(block, *last)
 		*last = block
 		parseFunc(index, block)
-	}
-}
-
-func GetProcessBlockReverseFunc(parseFunc func(uint64, parseBlock)) func ([]byte, int, uint64) {
-	var last parseBlock
-	return func(buffer []byte, amt int, index uint64) {
-		block := getParseBlock(buffer[:amt])
-		block = stitchOtherBlockPrefix(block, last)
-		last = block
-		parseFunc(index, block)
-	}
-}
-
-func GetProcessBlockReverseNLinesLimitFunc(index *uint64, currentCount *uint64, lineLimit uint64, processFunc func(uint64, []byte, uint64)) func(uint64, parseBlock) {
-	return func(ba uint64, block parseBlock) {
-		if(block.main != nil) {
-			linesToProcess := block.mainCount
-			if linesToProcess + *currentCount > lineLimit {
-				linesToProcess = lineLimit - *currentCount
-			}
-			*currentCount += linesToProcess
-			processFunc(*index, block.main, linesToProcess)
-			*index++
-		}
-	}
-}
-
-func GetReadReverseAsyncFuncFilter(parseResultChan chan<- parseResult, expr string) func(uint64, []byte, uint64) {
-	return func(index uint64, buffer []byte, nLines uint64) {
-		go func() {
-			reader := bytes.NewReader(buffer)
-			reader.Seek(0, io.SeekEnd)
-			res, err := core.ReadReversePassesFilterFast(reader, expr)
-		parseResultChan <- parseResult{
-				index: index,
-				result: res,
-				err: err,
-			}
-		}()
-	}
-}
-
-func GetReadReverseAsyncFunc(parseResultChan chan<- parseResult) func(uint64, []byte, uint64) {
-	return func(index uint64, buffer []byte, nLines uint64) {
-		go func() {
-			reader := bytes.NewReader(buffer)
-			reader.Seek(0, io.SeekEnd)
-			res, err := core.ReadReverseNLinesFast(reader, nLines)
-		parseResultChan <- parseResult{
-				index: index,
-				result: res,
-				err: err,
-			}
-		}()
 	}
 }
 
@@ -119,101 +64,6 @@ func AccumulateResults(results <-chan parseResult, expectedMaxIndex <-chan uint6
 	close(errorReport)
 	defer close(accumulated)
 	accumulated <- bytes.NewReader(buffer.Bytes())
-}
-
-func ReadReversePassesFilter(reader io.ReadSeeker, expr string, chunk int64) (io.ReadSeeker, error) {
-	magic := uint64(0)
-
-	results := make(chan parseResult)
-	expected := make(chan uint64)
-	accumulated := make(chan io.ReadSeeker)
-	errChannel := make(chan error)
-	go AccumulateResults(results, expected, accumulated, errChannel)
-
-	defer close(results)
-	defer close(expected)
-
-	var lastBlock parseBlock
-	f := GetReadReverseAsyncFuncFilter(results, expr)
-	processBlock := GetProcessBlockReverseFuncTestPtr(&lastBlock, func(index uint64, block parseBlock) {
-		if(block.main != nil) {
-			f(magic, block.main, block.mainCount)
-			magic++
-		}
-	})
-	keepReading := func () bool {
-		// early kill here?
-		return true
-	}
-
-	i, err := ChunkRead(reader, chunk, ReadBackward, processBlock, keepReading)
-	if err != nil {
-		return nil, err
-	}
-
-	{
-		dummy := parseBlock{ prefix: []byte("dummy\n")}
-		dummy = stitchOtherBlockPrefix(dummy, lastBlock)
-		if dummy.main != nil {
-			processBlock(dummy.main, len(dummy.main), i + 1)
-			i++
-		} else {
-			return nil, errors.New("parse error")
-		}
-	}
-
-	expected <- magic
-
-	err = <- errChannel
-	if err != nil {
-		return nil, err
-	}
-	return <- accumulated, nil
-}
-
-func ReadReverseNLines(reader io.ReadSeeker, nLines uint64, chunk int64) (io.ReadSeeker, error) {
-	count := uint64(0)
-	index := uint64(0)
-
-	results := make(chan parseResult)
-	expected := make(chan uint64)
-	accumulated := make(chan io.ReadSeeker)
-	errChannel := make(chan error)
-	go AccumulateResults(results, expected, accumulated, errChannel)
-
-	defer close(results)
-	defer close(expected)
-
-	var lastBlock parseBlock
-	processBlock := GetProcessBlockReverseFuncTestPtr(&lastBlock, GetProcessBlockReverseNLinesLimitFunc(&index, &count, nLines, GetReadReverseAsyncFunc(results)))
-	keepReading := func () bool {
-		// early kill here?
-		return count < nLines
-	}
-
-	i, err := ChunkRead(reader, chunk, ReadBackward, processBlock, keepReading)
-	if err != nil {
-		return nil, err
-	}
-
-	if count < nLines {
-		dummy := parseBlock{ prefix: []byte("dummy\n")}
-		dummy = stitchOtherBlockPrefix(dummy, lastBlock)
-		if dummy.main != nil {
-			processBlock(dummy.main, len(dummy.main), i + 1)
-			i++
-		} else {
-			return nil, errors.New("parse error")
-		}
-	}
-
-	expected <- index
-
-	err = <- errChannel
-	if err != nil {
-		return nil, err
-	}
-	return <- accumulated, nil
 }
 
 func ChunkRead(reader io.ReadSeeker, chunk int64, direction int, processChunk func([]byte, int, uint64), keepReading func() bool) (uint64, error) {
