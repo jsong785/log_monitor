@@ -21,6 +21,7 @@ func TestReadLastLinesContainsString_File_small(t *testing.T) {
 	assert.Equal(t, []string{"_world\n", "_hello\n"}, test_utils.GetLines(line))
 }
 
+/*
 func TestEqual(t *testing.T) {
 	a, _ := ReadReverseNLines("../files/syslog_large", 100000)
 	b, err := ReadReverseNLinesChunk("../files/syslog_large",100000)
@@ -33,6 +34,7 @@ func TestEqual(t *testing.T) {
 	defer bf.Close()
 	io.Copy(bf, b)
 }
+*/
 
 func BenchmarkLargeFile_SingleRequest(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -79,7 +81,7 @@ func BenchmarkLargeFile_ManyRequestsChunk(b *testing.B) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := ReadReverseNLinesChunk("../files/syslog_large", 1000)
+				_, err := ReadReverseNLinesChunk("../files/syslog_large", 1000000)
 				assert.Nil(b, err)
 			}()
 		}

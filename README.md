@@ -1,5 +1,8 @@
 # Observability of log files
 
+## building
+cd to main and `go build`
+
 ## running the server
 To run, package main has the http server.
 Without any arguments supplied, it runs on "localhost:8080" on "/var/log" withe writing request timeout of 2000 milliseconds. Reading a client request timeout is hardcoded to 100ms. 
@@ -26,7 +29,12 @@ Ex:
 I spent most of the time attempting to optimize the file reading capabilities of the system.
 I am getting worse performance than `tail -n 100000 large_file | tac` on my home computer, but on a high powered workstation, I am exceeded performance of the above.
 
-INSERT_TIMES_HERE
+On the high powered workstation Intel Core-i7 2.6ghz with 32gigs of ram; and SSD hard drive. (note: this happens to be a windows machine and I'm running this benchmark under WSL (Windows Subsystem for Linux))
+
+- Reading 100K lines `time tail -n 100000 LARGE_FILE | tac > /dev/null`; averages 36ms.
+- cd to `file_reader` and run `go test -count=1 -bench=BenchmarkLargeFile_SingleRequestChunk100K`; averages 9.4ms!
+  - `go test -count=1 -bench=BenchmarkLargeFile_ManyRequestsChunk` which is the equivalent of above, but 1000 concurrent requests; 40129ms per run; or 40ms per run.
+- diffing the output between the linux command, and the two versions of the reverse n lines reader written (one is slower), resolve to be no difference.
 
 ## file reading
 ### synchronous issues
@@ -96,6 +104,7 @@ Holes in the design:
 - For each level of the code (core -> file -> http); errors should ideally be wrapped with errors at the current abstraction level. Furthermore, the error codes should be wrapped in a way so that any error detected at the http layer doesn't just default to 404 all the time.
 - How the garbage collector/memory holds up over high request periods. A pool can be written later on if required to handle the problem of reallocating memory on the heap over and over again. Would probably need some routines to shrink back down memory after a period of time if required.
 - I am fairly sure the code as-is is not 100% go pedantic.
+- Instead of writng to a slice or buffer and returning; it would probably be better to write to a io.Writer interface or similar; which http.ResponseWriter would also meet. There are may be optimizations (needs research) to stream the http response out vs writing it out in one huge chunk and then writing it again.
 
 # testing
 Each level of the application has unit-tests associated with it. At the file_reader level; some of the tests require the existence of 'syslog_large' in the files directory; this is not included due to file-size limits on github. This file needs to have at least 100,000 lines.
