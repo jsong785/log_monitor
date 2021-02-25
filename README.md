@@ -75,11 +75,13 @@ To keep it short, here are some examples:
 - end reached, special rules to process prefix "123\n" perhaps.
 - 123 and 456 are processed
 
+
 - "123\n456\n78", chunk is 5
 - [56\n, nil, 78] --> no previous block to stitch; no main to process
 - [123\n, nil, 4] --> stitch previous [123\n, 456\n, nil], main to p rocess
 - end reached, special rules to process prefix "123\n" perhaps.
 - 123 and 456 are processed
+
 
 - "123\n4\n56", chunk is 5
 - [\n, 4\n, 56] --> no previous block to stitch; main to process
