@@ -67,26 +67,24 @@ Processing this chunk, we would only process main. If we happen to now be at the
 
 To keep it short, here are some examples:
 - "123\n456\n78", chunk is 2
-- [nil, nil, 78] --> no previous block to stitch; no main to process.
-- [6\n, nil, nil] --> stitch previous [6\n, nil, nil] (discard the suffix of the previous, discard a partial line); no main to process
-- [nil, nil, 45] --> stitch previous [456\n, nil, nil]; no main to process
-- [3\n, nil, nil] --> stich previous [3\n, 456\n, nil]; main to process
-- [12, nil, nil] --> stitch previous [123\n, nil, nil]; no main to process
-- end reached, special rules to process prefix "123\n" perhaps.
-- 123 and 456 are processed
-
+  - [nil, nil, 78] --> no previous block to stitch; no main to process.
+  - [6\n, nil, nil] --> stitch previous [6\n, nil, nil] (discard the suffix of the previous, discard a partial line); no main to process
+  - [nil, nil, 45] --> stitch previous [456\n, nil, nil]; no main to process
+  - [3\n, nil, nil] --> stich previous [3\n, 456\n, nil]; main to process
+  - [12, nil, nil] --> stitch previous [123\n, nil, nil]; no main to process
+  - end reached, special rules to process prefix "123\n" perhaps.
+  - 123 and 456 are processed
 
 - "123\n456\n78", chunk is 5
-- [56\n, nil, 78] --> no previous block to stitch; no main to process
-- [123\n, nil, 4] --> stitch previous [123\n, 456\n, nil], main to p rocess
-- end reached, special rules to process prefix "123\n" perhaps.
-- 123 and 456 are processed
-
+  - [56\n, nil, 78] --> no previous block to stitch; no main to process
+  - [123\n, nil, 4] --> stitch previous [123\n, 456\n, nil], main to p rocess
+  - end reached, special rules to process prefix "123\n" perhaps.
+  - 123 and 456 are processed
 
 - "123\n4\n56", chunk is 5
-- [\n, 4\n, 56] --> no previous block to stitch; main to process
-- [nil, nil, 123] --> stitch previous [nil, 123\n, nil]; main to process
-- end reached, 123 and 4 are processed
+  - [\n, 4\n, 56] --> no previous block to stitch; main to process
+  - [nil, nil, 123] --> stitch previous [nil, 123\n, nil]; main to process
+  - end reached, 123 and 4 are processed
 
 Holes in the design:
 - REST api chaining lines and filters is hardcoded to lines then filters; there should be a better api.
