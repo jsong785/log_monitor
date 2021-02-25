@@ -3,8 +3,8 @@ package chunk_reader
 import (
 	"bytes"
 	"errors"
-	"math"
 	"io"
+	"math"
 	"sort"
 )
 
@@ -13,7 +13,7 @@ const ReadBackward = 1
 
 func getReadOffset(direction int, chunk int64, position int64) int64 {
 	if direction == ReadBackward {
-		if chunk > position  {
+		if chunk > position {
 			return -position
 		}
 		return -chunk
@@ -22,7 +22,7 @@ func getReadOffset(direction int, chunk int64, position int64) int64 {
 	}
 }
 
-func GetProcessBlockReverseFunc(last *parseBlock, parseFunc func(uint64, parseBlock)) func ([]byte, int, uint64) {
+func GetProcessBlockReverseFunc(last *parseBlock, parseFunc func(uint64, parseBlock)) func([]byte, int, uint64) {
 	return func(buffer []byte, amt int, index uint64) {
 		block := getParseBlock(buffer[:amt])
 		block = stitchOtherBlockPrefix(block, *last)
@@ -37,16 +37,16 @@ func AccumulateResults(results <-chan parseResult, expectedMaxIndex <-chan uint6
 	max := uint64(0)
 	for !checkMax || uint64(len(bufferedResults)) < max {
 		select {
-			case res := <-results:
-			if res.err != nil { 
-					close(accumulated)
-					defer close(errorReport)
-					errorReport <- res.err
-					return
-				}
-				bufferedResults = append(bufferedResults, res)
-			case max = <-expectedMaxIndex:
-				checkMax = true
+		case res := <-results:
+			if res.err != nil {
+				close(accumulated)
+				defer close(errorReport)
+				errorReport <- res.err
+				return
+			}
+			bufferedResults = append(bufferedResults, res)
+		case max = <-expectedMaxIndex:
+			checkMax = true
 		}
 	}
 
@@ -115,7 +115,7 @@ func ChunkRead(reader io.ReadSeeker, chunk int64, direction int, processChunk fu
 		}
 	}
 	if somethingProcessed {
-		return index-1, nil
+		return index - 1, nil
 	}
 	return index, nil
 }

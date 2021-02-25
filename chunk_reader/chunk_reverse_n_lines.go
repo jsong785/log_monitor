@@ -21,8 +21,8 @@ func ReadReverseNLines(reader io.ReadSeeker, nLines uint64, chunk int64) (io.Rea
 	defer close(expected)
 
 	var lastBlock parseBlock
-	processBlock := GetProcessBlockReverseFunc(&lastBlock, GetProcessBlockReverseNLinesLimitFunc(&validBlockCount , &count, nLines, GetReadReverseNLinesAsyncFunc(results)))
-	keepReading := func () bool {
+	processBlock := GetProcessBlockReverseFunc(&lastBlock, GetProcessBlockReverseNLinesLimitFunc(&validBlockCount, &count, nLines, GetReadReverseNLinesAsyncFunc(results)))
+	keepReading := func() bool {
 		// early kill here?
 		return count < nLines
 	}
@@ -33,30 +33,30 @@ func ReadReverseNLines(reader io.ReadSeeker, nLines uint64, chunk int64) (io.Rea
 	}
 
 	if count < nLines {
-		dummy := parseBlock{ prefix: []byte("dummy\n")}
+		dummy := parseBlock{prefix: []byte("dummy\n")}
 		dummy = stitchOtherBlockPrefix(dummy, lastBlock)
 		if dummy.main != nil {
-			processBlock(dummy.main, len(dummy.main), i + 1)
+			processBlock(dummy.main, len(dummy.main), i+1)
 			i++
 		} else {
 			return nil, errors.New("parse error")
 		}
 	}
 
-	expected <- validBlockCount 
+	expected <- validBlockCount
 
-	err = <- errChannel
+	err = <-errChannel
 	if err != nil {
 		return nil, err
 	}
-	return <- accumulated, nil
+	return <-accumulated, nil
 }
 
 func GetProcessBlockReverseNLinesLimitFunc(index *uint64, currentCount *uint64, lineLimit uint64, processFunc func(uint64, []byte, uint64)) func(uint64, parseBlock) {
 	return func(ba uint64, block parseBlock) {
-		if(block.main != nil) {
+		if block.main != nil {
 			linesToProcess := block.mainCount
-			if linesToProcess + *currentCount > lineLimit {
+			if linesToProcess+*currentCount > lineLimit {
 				linesToProcess = lineLimit - *currentCount
 			}
 			*currentCount += linesToProcess
@@ -72,10 +72,10 @@ func GetReadReverseNLinesAsyncFunc(parseResultChan chan<- parseResult) func(uint
 			reader := bytes.NewReader(buffer)
 			reader.Seek(0, io.SeekEnd)
 			res, err := core.ReadReverseNLinesFast(reader, nLines)
-		parseResultChan <- parseResult{
-				index: index,
+			parseResultChan <- parseResult{
+				index:  index,
 				result: res,
-				err: err,
+				err:    err,
 			}
 		}()
 	}

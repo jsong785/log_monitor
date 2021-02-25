@@ -3,8 +3,8 @@ package chunk_reader
 import (
 	"bytes"
 	"github.com/stretchr/testify/assert"
-	"log_monitor/monitor/test_utils"
 	"io"
+	"log_monitor/monitor/test_utils"
 	"strings"
 	"testing"
 )
@@ -16,7 +16,7 @@ func TestReadReverseN(t *testing.T) {
 		res, err := ReadReverseNLines(reader, 3, 1)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"ghi\n", "def\n", "abc\n"}, test_utils.GetLines(res))
-	});
+	})
 
 	t.Run("ran", func(t *testing.T) {
 		reader := strings.NewReader("abc\ndef\nghi\n")
@@ -24,7 +24,7 @@ func TestReadReverseN(t *testing.T) {
 		res, err := ReadReverseNLines(reader, 3, 2)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"ghi\n", "def\n", "abc\n"}, test_utils.GetLines(res))
-	});
+	})
 
 	t.Run("ran", func(t *testing.T) {
 		reader := strings.NewReader("abc\ndef\nghi\n")
@@ -32,7 +32,7 @@ func TestReadReverseN(t *testing.T) {
 		res, err := ReadReverseNLines(reader, 3, 3)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"ghi\n", "def\n", "abc\n"}, test_utils.GetLines(res))
-	});
+	})
 
 	t.Run("ran", func(t *testing.T) {
 		reader := strings.NewReader("abc\ndef\nghi\n")
@@ -40,7 +40,7 @@ func TestReadReverseN(t *testing.T) {
 		res, err := ReadReverseNLines(reader, 3, 10000)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"ghi\n", "def\n", "abc\n"}, test_utils.GetLines(res))
-	});
+	})
 }
 
 func TestReadReverseNFilter(t *testing.T) {
@@ -50,7 +50,7 @@ func TestReadReverseNFilter(t *testing.T) {
 		res, err := ReadReversePassesFilter(reader, "e", 1)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"def\n"}, test_utils.GetLines(res))
-	});
+	})
 
 	t.Run("ran", func(t *testing.T) {
 		reader := strings.NewReader("aob\ncde\nfog\n")
@@ -58,7 +58,7 @@ func TestReadReverseNFilter(t *testing.T) {
 		res, err := ReadReversePassesFilter(reader, "o", 2)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"fog\n", "aob\n"}, test_utils.GetLines(res))
-	});
+	})
 
 	t.Run("ran", func(t *testing.T) {
 		reader := strings.NewReader("aob\ncde\nfog\n")
@@ -66,7 +66,7 @@ func TestReadReverseNFilter(t *testing.T) {
 		res, err := ReadReversePassesFilter(reader, "o", 3)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"fog\n", "aob\n"}, test_utils.GetLines(res))
-	});
+	})
 
 	t.Run("ran", func(t *testing.T) {
 		reader := strings.NewReader("aob\ncde\nfog\n")
@@ -74,11 +74,11 @@ func TestReadReverseNFilter(t *testing.T) {
 		res, err := ReadReversePassesFilter(reader, "o", 10000)
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"fog\n", "aob\n"}, test_utils.GetLines(res))
-	});
+	})
 }
 
 func TestAccumulatedResults(t *testing.T) {
-	t.Run("", func(t *testing.T){
+	t.Run("", func(t *testing.T) {
 		results := make(chan parseResult)
 		expected := make(chan uint64)
 		accumulated := make(chan io.ReadSeeker)
@@ -93,13 +93,13 @@ func TestReadReverseAsync(t *testing.T) {
 	f := GetReadReverseNLinesAsyncFunc(c)
 
 	f(0, []byte("abc\ndef\ngef\n"), 2)
-	res := <- c
+	res := <-c
 	assert.Nil(t, res.err)
 	assert.Equal(t, uint64(0), res.index)
 	assert.Equal(t, []string{"gef\n", "def\n"}, test_utils.GetLines(res.result))
 
 	f(1, []byte("abc\ndef\ngef\n"), 5)
-	res = <- c
+	res = <-c
 	assert.NotNil(t, res.err)
 	assert.Equal(t, uint64(1), res.index)
 	assert.Nil(t, res.result)
@@ -123,7 +123,7 @@ func TestGetProcessBlockReverseNLinesLimitFunc(t *testing.T) {
 		f(0, CreateBlockWithCount("123\n", "456\n789\n", "", 2))
 		assert.Equal(t, uint64(0), index)
 		assert.Equal(t, uint64(2), lines)
-		assert.Equal(t,"456\n789\n", string(buffer))
+		assert.Equal(t, "456\n789\n", string(buffer))
 		assert.Equal(t, uint64(1), validBlockCount)
 
 		f(1, CreateBlockWithCount("123\n", "456\n789\n", "", 2))
@@ -140,13 +140,13 @@ func TestGetProcessBlockReverseNLinesLimitFunc(t *testing.T) {
 		f(0, CreateBlockWithCount("123\n", "456\n789\nabc\n", "", 3))
 		assert.Equal(t, uint64(0), index)
 		assert.Equal(t, uint64(2), lines)
-		assert.Equal(t,"456\n789\nabc\n", string(buffer))
+		assert.Equal(t, "456\n789\nabc\n", string(buffer))
 		assert.Equal(t, uint64(1), validBlockCount)
 
 		f(1, CreateBlockWithCount("123\n", "456\n789\nabc\n", "", 3))
 		assert.Equal(t, uint64(1), index)
 		assert.Equal(t, uint64(0), lines)
-		assert.Equal(t,"456\n789\nabc\n", string(buffer))
+		assert.Equal(t, "456\n789\nabc\n", string(buffer))
 		assert.Equal(t, uint64(2), validBlockCount)
 	})
 }
@@ -193,21 +193,21 @@ func TestgetReadOfset(t *testing.T) {
 func TestChunkReadForwards(t *testing.T) {
 	t.Run("forwards - invalid buffer size", func(t *testing.T) {
 		reader := strings.NewReader("")
-		i, err := ChunkRead(reader, -1, ReadForward, func([]byte, int, uint64){}, func() bool{ return true })
+		i, err := ChunkRead(reader, -1, ReadForward, func([]byte, int, uint64) {}, func() bool { return true })
 		assert.Equal(t, uint64(0), i)
 		assert.Equal(t, "cache size must be above zero", err.Error())
 
-		i, err =  ChunkRead(reader, 0, ReadForward, func([]byte, int, uint64){}, func() bool{ return true })
+		i, err = ChunkRead(reader, 0, ReadForward, func([]byte, int, uint64) {}, func() bool { return true })
 		assert.Equal(t, uint64(0), i)
 		assert.Equal(t, "cache size must be above zero", err.Error())
 	})
 	t.Run("forwards - empty", func(t *testing.T) {
 		reader := strings.NewReader("")
-		i, err := ChunkRead(reader, 1, ReadForward, func([]byte, int, uint64){}, func() bool{ return true })
+		i, err := ChunkRead(reader, 1, ReadForward, func([]byte, int, uint64) {}, func() bool { return true })
 		assert.Equal(t, uint64(0), i)
 		assert.Nil(t, err)
 
-		i, err = ChunkRead(reader, 2, ReadForward, func([]byte, int, uint64){}, func() bool{ return true })
+		i, err = ChunkRead(reader, 2, ReadForward, func([]byte, int, uint64) {}, func() bool { return true })
 		assert.Equal(t, uint64(0), i)
 		assert.Nil(t, err)
 	})
@@ -216,17 +216,17 @@ func TestChunkReadForwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err := ChunkRead(reader, 1, ReadForward, 
+		i, err := ChunkRead(reader, 1, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				index = append(index, idx)
 				buffer = append(buffer, b[:amt]...)
-			}, func() bool{ return true })
+			}, func() bool { return true })
 
 		assert.Equal(t, uint64(5), i)
 		assert.Nil(t, err)
-		assert.Equal(t, []uint64{ 0, 1, 2, 3, 4, 5 }, index)
+		assert.Equal(t, []uint64{0, 1, 2, 3, 4, 5}, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(6), pos)
 	})
@@ -235,17 +235,17 @@ func TestChunkReadForwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err := ChunkRead(reader, 3, ReadForward, 
+		i, err := ChunkRead(reader, 3, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				index = append(index, idx)
 				buffer = append(buffer, b[:amt]...)
-			}, func() bool{ return true })
+			}, func() bool { return true })
 
 		assert.Equal(t, uint64(1), i)
 		assert.Nil(t, err)
-		assert.Equal(t, []uint64{ 0, 1 }, index)
+		assert.Equal(t, []uint64{0, 1}, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(6), pos)
 	})
@@ -254,17 +254,17 @@ func TestChunkReadForwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err :=  ChunkRead(reader, 5, ReadForward, 
+		i, err := ChunkRead(reader, 5, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
-			}, func() bool{ return true })
+			}, func() bool { return true })
 
 		assert.Equal(t, uint64(1), i)
 		assert.Nil(t, err)
-		assert.Equal(t, []uint64{ 0, 1 }, index)
+		assert.Equal(t, []uint64{0, 1}, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(6), pos)
 	})
@@ -273,17 +273,17 @@ func TestChunkReadForwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err :=  ChunkRead(reader, 6, ReadForward, 
+		i, err := ChunkRead(reader, 6, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
-			}, func() bool{ return true })
+			}, func() bool { return true })
 
 		assert.Equal(t, uint64(0), i)
 		assert.Nil(t, err)
-		assert.Equal(t, []uint64{ 0 }, index)
+		assert.Equal(t, []uint64{0}, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(6), pos)
 	})
@@ -292,17 +292,17 @@ func TestChunkReadForwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err :=  ChunkRead(reader, 8, ReadForward, 
+		i, err := ChunkRead(reader, 8, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
-			}, func() bool{ return true })
+			}, func() bool { return true })
 
 		assert.Equal(t, uint64(0), i)
 		assert.Nil(t, err)
-		assert.Equal(t, []uint64{ 0 }, index)
+		assert.Equal(t, []uint64{0}, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(6), pos)
 	})
@@ -311,17 +311,17 @@ func TestChunkReadForwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err :=  ChunkRead(reader, 3, ReadForward, 
+		i, err := ChunkRead(reader, 3, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
-			}, func() bool{ return false })
+			}, func() bool { return false })
 
 		assert.Equal(t, uint64(0), i)
 		assert.Nil(t, err)
 		assert.Equal(t, 0, len(index))
 		assert.Equal(t, 0, len(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(0), pos)
 	})
@@ -331,11 +331,11 @@ func TestChunkReadForwards(t *testing.T) {
 		keepReading := true
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		i, err :=  ChunkRead(reader, 3, ReadForward, 
+		i, err := ChunkRead(reader, 3, ReadForward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
-			}, func() bool{ 
+			}, func() bool {
 				cache := keepReading
 				keepReading = !keepReading
 				return cache
@@ -343,9 +343,9 @@ func TestChunkReadForwards(t *testing.T) {
 
 		assert.Equal(t, uint64(0), i)
 		assert.Nil(t, err)
-		assert.Equal(t, []uint64{ 0 }, index)
+		assert.Equal(t, []uint64{0}, index)
 		assert.Equal(t, "123", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(3), pos)
 	})
@@ -371,7 +371,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 1, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 1, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				index = append(index, idx)
 				buffer = append(buffer, b[:amt]...)
@@ -379,7 +379,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, []uint64{ 0, 1, 2, 3, 4, 5}, index)
 		assert.Equal(t, "654321", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(0), pos)
 	})
@@ -389,7 +389,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 3, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 3, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
@@ -397,7 +397,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, []uint64{ 0, 1 }, index)
 		assert.Equal(t, "456123", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(0), pos)
 	})
@@ -407,7 +407,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 5, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 5, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				index = append(index, idx)
 				buffer = append(buffer, b[:amt]...)
@@ -415,7 +415,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, []uint64{ 0, 1 }, index)
 		assert.Equal(t, "234561", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(0), pos)
 	})
@@ -425,7 +425,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 6, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 6, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
@@ -433,7 +433,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, []uint64{ 0 }, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(0), pos)
 	})
@@ -443,7 +443,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 8, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 8, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
@@ -451,7 +451,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, []uint64{ 0 }, index)
 		assert.Equal(t, "123456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(0), pos)
 	})
@@ -461,7 +461,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 3, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 3, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
@@ -469,7 +469,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, 0, len(index))
 		assert.Equal(t, 0, len(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(6), pos)
 	})
@@ -480,7 +480,7 @@ func TestChunkReadBackwards(t *testing.T) {
 		keepReading := true
 		index := make([]uint64, 0)
 		buffer := make([]byte, 0)
-		assert.Nil(t, ChunkRead(reader, 3, ReadBackward, 
+		assert.Nil(t, ChunkRead(reader, 3, ReadBackward,
 			func(b []byte, amt int, idx uint64) {
 				buffer = append(buffer, b[:amt]...)
 				index = append(index, idx)
@@ -492,7 +492,7 @@ func TestChunkReadBackwards(t *testing.T) {
 
 		assert.Equal(t, []uint64{ 0 }, index)
 		assert.Equal(t, "456", string(buffer))
-		
+
 		pos, _ := reader.Seek(0, io.SeekCurrent)
 		assert.Equal(t, int64(3), pos)
 	})

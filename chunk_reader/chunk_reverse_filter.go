@@ -22,12 +22,12 @@ func ReadReversePassesFilter(reader io.ReadSeeker, expr string, chunk int64) (io
 	var lastBlock parseBlock
 	filter := GetReadReverseAsyncFuncFilter(results, expr)
 	processBlock := GetProcessBlockReverseFunc(&lastBlock, func(index uint64, block parseBlock) {
-		if(block.main != nil) {
+		if block.main != nil {
 			filter(validBlockCount, block.main, block.mainCount)
 			validBlockCount++
 		}
 	})
-	keepReading := func () bool {
+	keepReading := func() bool {
 		// early kill here?
 		return true
 	}
@@ -38,10 +38,10 @@ func ReadReversePassesFilter(reader io.ReadSeeker, expr string, chunk int64) (io
 	}
 
 	{
-		dummy := parseBlock{ prefix: []byte("dummy\n")}
+		dummy := parseBlock{prefix: []byte("dummy\n")}
 		dummy = stitchOtherBlockPrefix(dummy, lastBlock)
 		if dummy.main != nil {
-			processBlock(dummy.main, len(dummy.main), i + 1)
+			processBlock(dummy.main, len(dummy.main), i+1)
 			i++
 		} else {
 			return nil, errors.New("parse error")
@@ -50,11 +50,11 @@ func ReadReversePassesFilter(reader io.ReadSeeker, expr string, chunk int64) (io
 
 	expected <- validBlockCount
 
-	err = <- errChannel
+	err = <-errChannel
 	if err != nil {
 		return nil, err
 	}
-	return <- accumulated, nil
+	return <-accumulated, nil
 }
 
 func GetReadReverseAsyncFuncFilter(parseResultChan chan<- parseResult, expr string) func(uint64, []byte, uint64) {
@@ -63,12 +63,11 @@ func GetReadReverseAsyncFuncFilter(parseResultChan chan<- parseResult, expr stri
 			reader := bytes.NewReader(buffer)
 			reader.Seek(0, io.SeekEnd)
 			res, err := core.ReadReversePassesFilterFast(reader, expr)
-		parseResultChan <- parseResult{
-				index: index,
+			parseResultChan <- parseResult{
+				index:  index,
 				result: res,
-				err: err,
+				err:    err,
 			}
 		}()
 	}
 }
-
