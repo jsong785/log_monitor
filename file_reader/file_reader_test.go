@@ -22,8 +22,8 @@ func TestReadLastLinesContainsString_File_small(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
-	a, _ := ReadReverseNLines("../files/syslog_large", 1000)
-	b, err := ReadReverseNLinesChunk("../files/syslog_large", 1000)
+	a, _ := ReadReverseNLines("../files/syslog_large", 100000)
+	b, err := ReadReverseNLinesChunk("../files/syslog_large",100000)
 	assert.Nil(t, err)
 	af, _ := os.Create("AAA")
 	defer af.Close()
