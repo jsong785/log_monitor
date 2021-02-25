@@ -90,7 +90,7 @@ func TestAccumulatedResults(t *testing.T) {
 
 func TestReadReverseAsync(t *testing.T) {
 	c := make(chan parseResult)
-	f := GetReadReverseAsyncFunc(c)
+	f := GetReadReverseNLinesAsyncFunc(c)
 
 	f(0, []byte("abc\ndef\ngef\n"), 2)
 	res := <- c
@@ -159,19 +159,23 @@ func TestGetProcessReverseBlockFunc(t *testing.T) {
 		last = b
 	}
 
-	f := GetProcessBlockReverseFunc(blockFunc)
+	var lastPtr parseBlock
+	f := GetProcessBlockReverseFunc(&lastPtr, blockFunc)
 
 	f([]byte("123\n"), 4, 0)
 	assert.Equal(t, uint64(0), index)
 	assert.Equal(t, CreateBlock("123\n", "", ""), last)
+	assert.Equal(t, CreateBlock("123\n", "", ""), lastPtr)
 
 	f([]byte("456\n789\n"), 4, 1)
 	assert.Equal(t, uint64(1), index)
 	assert.Equal(t, CreateBlock("456\n", "123\n", ""), last)
+	assert.Equal(t, CreateBlock("456\n", "123\n", ""), lastPtr)
 
 	f([]byte("abc\ndef\n"), 8, 2)
 	assert.Equal(t, uint64(2), index)
 	assert.Equal(t, CreateBlockWithCount("abc\n", "def\n456\n", "", 2), last)
+	assert.Equal(t, CreateBlockWithCount("abc\n", "def\n456\n", "", 2), lastPtr)
 }
 
 func TestgetReadOfset(t *testing.T) {

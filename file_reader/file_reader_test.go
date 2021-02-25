@@ -2,9 +2,9 @@ package file_reader
 
 import (
 	"github.com/stretchr/testify/assert"
-	"io"
+	//"io"
 	"log_monitor/monitor/test_utils"
-	"os"
+	//"os"
 	"sync"
 	"testing"
 )

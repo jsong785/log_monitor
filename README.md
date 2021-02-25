@@ -21,7 +21,7 @@ Ex:
 - http://localhost:8080/file?lines=100
 - http://localhost:8080/file?filter=abc
 
-Combinations are supported as well; in any order; but the underlying code will do lines first, then filiter
+Combinations are supported as well; in any order; but the underlying code will do lines first, then filter.
 Ex:
 - http://localhost:8080/file?lines=100&filter=abc
 
@@ -31,9 +31,14 @@ I am getting worse performance than `tail -n 100000 large_file | tac` on my home
 
 On the high powered workstation Intel Core-i7 2.6ghz with 32gigs of ram; and SSD hard drive. (note: this happens to be a windows machine and I'm running this benchmark under WSL (Windows Subsystem for Linux))
 
+### benchmarks
 - Reading 100K lines `time tail -n 100000 LARGE_FILE | tac > /dev/null`; averages 36ms.
 - cd to `file_reader` and run `go test -count=1 -bench=BenchmarkLargeFile_SingleRequestChunk100K`; averages 9.4ms!
   - `go test -count=1 -bench=BenchmarkLargeFile_ManyRequestsChunk` which is the equivalent of above, but 1000 concurrent requests; 40129ms per run; or 40ms per run.
+    - on my slower machine, the concurrent tests are about the same (from memory)
+  - tests at the http layer on the same file:
+    - 52.9ms for a single request (100,000 lines)
+    - 42275.3418ms for 1000 requests (100,000) lines, or 42.275ms per request.
 - diffing the output between the linux command, and the two versions of the reverse n lines reader written (one is slower), resolve to be no difference.
 
 ## file reading
@@ -44,6 +49,9 @@ There are 5 different types of problems that may occur when reading log files. T
 - reading from a log file as a file is being renamed.
 - reading from a log file as a file is being moved.
 - reading from a file as it is being truncated in place (may happen if in place truncation scheme is used for file rotation in syslog).
+
+### reverse time ordering
+- Assuming file events are outputted in order; this does not happen all the time. I admit, I was only aware of this near the end; I read reverse time ordered as last n lines.
 
 Here is how they are handled:
 - POSIX defines a line as ending with '\n'; vim will automatically insert a new line when saving a file with only "one line written" (no return). Various linux programs would break if this wasn't the case. In reverse, every line must start with '\n'; otherwise it isn't a line, or reading is done concurrently with a write. Just simply go back to the first '\n'.
@@ -105,7 +113,7 @@ Holes in the design:
 - How the garbage collector/memory holds up over high request periods. A pool can be written later on if required to handle the problem of reallocating memory on the heap over and over again. Would probably need some routines to shrink back down memory after a period of time if required.
 - I am fairly sure the code as-is is not 100% go pedantic.
 - Instead of writng to a slice or buffer and returning; it would probably be better to write to a io.Writer interface or similar; which http.ResponseWriter would also meet. There are may be optimizations (needs research) to stream the http response out vs writing it out in one huge chunk and then writing it again.
+- If disk reading is done and only cpu processing is left; just close the file descriptor earlier than it is being done now.
 
 # testing
 Each level of the application has unit-tests associated with it. At the file_reader level; some of the tests require the existence of 'syslog_large' in the files directory; this is not included due to file-size limits on github. This file needs to have at least 100,000 lines.
-
